@@ -41,7 +41,23 @@ VAULT_PATH=""
 ACTIVE_SCOPE=""
 
 GLOBAL_SIDECAR="$HOME/.config/wiki-memory/vault-path"
-PROJECT_SIDECAR="$PWD/.claude/wiki-memory.conf"
+
+# Walk up from $PWD to find a project sidecar (`.claude/wiki-memory.conf`).
+# Stops at filesystem root or $HOME (whichever first). Returns first match's path.
+_discover_project_sidecar() {
+  local dir="$PWD"
+  while [[ -n "$dir" && "$dir" != "/" ]]; do
+    if [[ -f "$dir/.claude/wiki-memory.conf" ]]; then
+      echo "$dir/.claude/wiki-memory.conf"
+      return 0
+    fi
+    [[ "$dir" == "$HOME" ]] && break
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+PROJECT_SIDECAR="$(_discover_project_sidecar 2>/dev/null || true)"
 
 if [[ -f "$GLOBAL_SIDECAR" ]]; then
   VAULT_PATH="$(cat "$GLOBAL_SIDECAR")"
@@ -50,7 +66,7 @@ if [[ -f "$GLOBAL_SIDECAR" ]]; then
   ACTIVE_SCOPE="global"
 fi
 
-if [[ -f "$PROJECT_SIDECAR" ]]; then
+if [[ -n "$PROJECT_SIDECAR" && -f "$PROJECT_SIDECAR" ]]; then
   # Project sidecar uses key=value format
   _proj_vault="$(grep '^vault-path=' "$PROJECT_SIDECAR" 2>/dev/null | cut -d= -f2- || true)"
   if [[ -n "$_proj_vault" ]]; then
@@ -86,7 +102,12 @@ _check_hooks_in_settings() {
 }
 
 GLOBAL_SETTINGS="$HOME/.claude/settings.json"
-PROJECT_SETTINGS="$PWD/.claude/settings.json"
+# Project settings.json sits next to project sidecar (same .claude/ dir if discovered)
+if [[ -n "$PROJECT_SIDECAR" ]]; then
+  PROJECT_SETTINGS="$(dirname "$PROJECT_SIDECAR")/settings.json"
+else
+  PROJECT_SETTINGS="$PWD/.claude/settings.json"
+fi
 
 GLOBAL_HOOKS="$(_check_hooks_in_settings "$GLOBAL_SETTINGS")"
 PROJECT_HOOKS="$(_check_hooks_in_settings "$PROJECT_SETTINGS")"
