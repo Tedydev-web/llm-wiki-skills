@@ -1,0 +1,4 @@
+OK step-15c: wiki/.state.json version=1
+WARNING step-15a: .state.json orphan entry 'raw/inbox/deleted-source.md' (file deleted; re-run /wiki-ingest to clean up)
+INFO step-15b: .state.json dangling output 'wiki/entities/deleted-entity.md' (source: 'raw/inbox/deleted-source.md') — output deleted; re-ingest if needed
+INFO step-15b: .state.json dangling output 'wiki/concepts/deleted-concept.md' (source: 'raw/inbox/deleted-source.md') — output deleted; re-ingest if needed

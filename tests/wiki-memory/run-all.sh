@@ -26,14 +26,14 @@ run_test() {
     echo "Running: $test_name"
     echo "========================================"
 
-    ((TOTAL_TESTS++))
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
     if bash "$test_file" 2>&1; then
         echo -e "${GREEN}✓ PASSED${NC}: $test_name"
-        ((PASSED_TESTS++))
+        PASSED_TESTS=$((PASSED_TESTS + 1))
     else
         echo -e "${RED}✗ FAILED${NC}: $test_name"
-        ((FAILED_TESTS++))
+        FAILED_TESTS=$((FAILED_TESTS + 1))
         FAILED_TEST_NAMES+=("$test_name")
     fi
 }

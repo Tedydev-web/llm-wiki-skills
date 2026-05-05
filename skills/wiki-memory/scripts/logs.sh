@@ -15,6 +15,8 @@ SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 [[ -f "$SKILL_ROOT/SKILL.md" ]] || { echo "[wiki-memory] ERROR: SKILL.md not found." >&2; exit 1; }
 
 source "$SCRIPT_DIR/lib-jq-merge.sh"
+# shellcheck source=lib-vault-discovery.sh
+source "$SCRIPT_DIR/lib-vault-discovery.sh"
 
 # ── Argument parsing ───────────────────────────────────────────────────────────
 FOLLOW=0
@@ -49,23 +51,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── Vault discovery ────────────────────────────────────────────────────────────
+# ── Vault discovery via shared lib (5-step precedence) ────────────────────────
 VAULT_PATH=""
-
-# Project sidecar takes precedence (more specific scope)
-PROJECT_SIDECAR="$PWD/.claude/wiki-memory.conf"
-GLOBAL_SIDECAR="$HOME/.config/wiki-memory/vault-path"
-
-if [[ -f "$PROJECT_SIDECAR" ]]; then
-  _v="$(grep '^vault-path=' "$PROJECT_SIDECAR" 2>/dev/null | cut -d= -f2- || true)"
-  [[ -n "$_v" ]] && VAULT_PATH="${_v/#\~/$HOME}"
-fi
-
-if [[ -z "$VAULT_PATH" && -f "$GLOBAL_SIDECAR" ]]; then
-  VAULT_PATH="$(cat "$GLOBAL_SIDECAR")"
-  VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
-fi
-
+VAULT_PATH="$(discover_vault 2>/dev/null || true)"
+VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
 VAULT_PATH="${VAULT_PATH%/}"
 
 if [[ -z "$VAULT_PATH" ]]; then

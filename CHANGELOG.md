@@ -2,6 +2,36 @@
 
 All notable changes to LLM Wiki.
 
+## [1.2.0] — 2026-05-05
+
+### Added
+- Sidecar config `~/.config/wiki/sidecar.json` with schema versioning + 7-day grace migration from v1.1's `~/.config/wiki-memory/vault-path` (G3, ADR 005)
+- Lint Step 16: `_schema` version audit in `wiki/index.md` (structural check promoting step 14c to standalone step)
+- Lint Step 17: `.memory.log` cross-reference audit — orphan log entries, orphan session files, timestamp monotonicity, duplicate detection (G4)
+- Auto-compile native mode: `wiki-memory enable --auto-compile native` with cron + launchd schedulers, multi-layer recursion guard (Layer 1 env-var + Layer 2 inheritance verified by spike + Layer 3 per-session lockdir), daily cost-cap, fs-type refusal (NFS/SMB/sshfs/cloud-sync), F9 symlink defense, F10 session_id sanitization (G1, ADR 006)
+- 6-layer test pyramid for prose-driven skills: L1 markdown lint + L2 schema invariants + L3 hash lockfile (drift detection) + L4 golden snapshots + L5 real-LLM gated (CI; $0.50/PR + $20/month aggregate cap) + L6 production smoke (G2)
+- `references/` subdirs for `wiki-ingest` (3 files) and `wiki-lint` (3 files); SKILL.md trimmed to ~75-80 lines each (G6)
+- ADR 005: sidecar schema-versioning + 7-day grace period + kubectl/AWS CLI lessons
+- ADR 006: auto-compile architecture + spike result + threat model
+
+### Changed
+- `wiki-memory/SKILL.md` frontmatter: dropped `model:` field for cross-skill consistency (G5)
+- `wiki-{ingest,lint}/SKILL.md` slimmed to ≤ 150 lines; deep specs moved to `references/` subdirs
+- `tests/wiki-memory/integration/test-anti-trace.sh` scope expanded from `wiki-memory/` to full `skills/` + `tests/` (F14 fix); `spisak` and `second.brain` added to forbidden tokens
+- `tests/wiki-memory/run-all.sh`: fixed pre-existing `((COUNTER++))` + `set -euo pipefail` early-exit bug (L1)
+
+### Fixed
+- Pre-existing `((COUNTER++))` arithmetic bug in `tests/wiki-memory/run-all.sh` under `set -e` caused test runner to exit after first test when counter started at 0 (L1 — surfaced during P06 validation)
+
+### Hardened (red-team + validation 2026-05-05)
+- 15 red-team findings applied (4 critical / 8 high / 3 medium); 4 validation decisions baked in (F3 hard-gate, 7-day grace, manual recovery, $20/month aggregate cap)
+- Pre-impl spike for F3 confirmed `claude -p` env-var propagation; bonus discovery: `claude -p` requires explicit `--settings <file>` flag
+- Trap-isolation fix in `cost-cap.sh` (no more silent `worker.lock` leak after cost_check)
+- Walk-up symlink-loop guard added to `lib-vault-discovery.sh` step 4 (M2)
+- File-level symlink rejection for `~/.config/wiki/sidecar.json` in `lib-vault-discovery.sh` (M3)
+
+---
+
 ## [v1.1.0] — 2026-05-05
 
 Schema v2: optional session memory capture, Q&A artifacts, incremental ingest.

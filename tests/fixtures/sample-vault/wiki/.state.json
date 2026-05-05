@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "files": {
+    "raw/inbox/sample-note.md": {
+      "sha256": "abc123def456abc123def456abc123def456abc123def456abc123def456abc123",
+      "ingested_at": "2026-04-01T10:00:00Z",
+      "ingested_into": [
+        "wiki/sources/sample-note.md",
+        "wiki/entities/sample-entity.md",
+        "wiki/concepts/sample-concept.md"
+      ]
+    }
+  }
+}

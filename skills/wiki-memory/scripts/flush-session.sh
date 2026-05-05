@@ -20,25 +20,23 @@ SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 [[ -f "$SKILL_ROOT/SKILL.md" ]] || { echo "[wiki-memory] ERROR: SKILL.md not found." >&2; exit 1; }
 
 source "$SCRIPT_DIR/lib-jq-merge.sh"
+# shellcheck source=lib-vault-discovery.sh
+source "$SCRIPT_DIR/lib-vault-discovery.sh"
 
 # ── Dependency check ───────────────────────────────────────────────────────────
 require_jq
 
-# ── hook-session-end.sh must exist (P2 deliverable) ───────────────────────────
+# ── hook-session-end.sh must exist ────────────────────────────────────────────
 HOOK_SESSION_END="$SCRIPT_DIR/hook-session-end.sh"
 if [[ ! -f "$HOOK_SESSION_END" ]]; then
   echo "[wiki-memory] ERROR: hook-session-end.sh not found at: $HOOK_SESSION_END" >&2
-  echo "  Phase-02 hook scripts must be installed before using flush." >&2
   exit 1
 fi
 
-# ── Vault sidecar check ────────────────────────────────────────────────────────
-# flush-session.sh does not need to know the vault path directly — hook-session-end.sh
-# reads its own sidecar. But we surface an early warning if neither sidecar exists.
-GLOBAL_SIDECAR="$HOME/.config/wiki-memory/vault-path"
-PROJECT_SIDECAR="$PWD/.claude/wiki-memory.conf"
-
-if [[ ! -f "$GLOBAL_SIDECAR" && ! -f "$PROJECT_SIDECAR" ]]; then
+# ── Vault reachability check via lib ──────────────────────────────────────────
+# flush-session.sh does not need vault path directly — hook-session-end.sh reads
+# its own sidecar. But we surface an early warning if vault is not configured.
+if ! discover_vault >/dev/null 2>&1; then
   echo "[wiki-memory] ERROR: wiki-memory is not enabled. Run '/wiki-memory enable' first." >&2
   exit 1
 fi

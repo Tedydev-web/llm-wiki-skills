@@ -1,0 +1,1 @@
+STALE_CACHE: wiki/cache.md updated 2020 but log has entries from 2026 (gap: 6y) — regenerate via /wiki-lint

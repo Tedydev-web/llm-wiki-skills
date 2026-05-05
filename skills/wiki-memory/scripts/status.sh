@@ -15,6 +15,8 @@ SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 [[ -f "$SKILL_ROOT/SKILL.md" ]] || { echo "[wiki-memory] ERROR: SKILL.md not found — corrupted install?" >&2; exit 1; }
 
 source "$SCRIPT_DIR/lib-jq-merge.sh"
+# shellcheck source=lib-vault-discovery.sh
+source "$SCRIPT_DIR/lib-vault-discovery.sh"
 
 # ── Color helpers (only when stdout is a TTY) ──────────────────────────────────
 _tty() { [[ -t 1 ]]; }
@@ -35,15 +37,32 @@ cyan()   { _color "0;36" "$*"; }
 # ── Dependency check ───────────────────────────────────────────────────────────
 require_jq
 
-# ── Vault discovery from sidecar config ───────────────────────────────────────
-# Try global sidecar first, then project sidecar
+# ── Vault discovery via shared lib (5-step precedence) ────────────────────────
+# Opportunistic legacy cleanup — runs before discovery so stale file check is current.
+cleanup_legacy_after_grace 2>/dev/null || true
+
 VAULT_PATH=""
 ACTIVE_SCOPE=""
 
-GLOBAL_SIDECAR="$HOME/.config/wiki-memory/vault-path"
+VAULT_PATH="$(discover_vault 2>/dev/null || true)"
+VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
+VAULT_PATH="${VAULT_PATH%/}"
 
-# Walk up from $PWD to find a project sidecar (`.claude/wiki-memory.conf`).
-# Stops at filesystem root or $HOME (whichever first). Returns first match's path.
+# Determine which source resolved to set ACTIVE_SCOPE for display purposes.
+if [[ -n "$VAULT_PATH" ]]; then
+  if [[ -n "${WIKI_MEMORY_VAULT:-}" ]]; then
+    ACTIVE_SCOPE="env"
+  elif [[ -r "$WIKI_NEW_SIDECAR" ]]; then
+    ACTIVE_SCOPE="global"
+  elif [[ -r "$WIKI_OLD_SIDECAR_GLOBAL" ]]; then
+    ACTIVE_SCOPE="global (legacy)"
+  else
+    ACTIVE_SCOPE="project"
+  fi
+fi
+
+# Derive PROJECT_SIDECAR for hook-presence check (settings.json path derivation below).
+PROJECT_SIDECAR=""
 _discover_project_sidecar() {
   local dir="$PWD"
   while [[ -n "$dir" && "$dir" != "/" ]]; do
@@ -56,27 +75,7 @@ _discover_project_sidecar() {
   done
   return 1
 }
-
 PROJECT_SIDECAR="$(_discover_project_sidecar 2>/dev/null || true)"
-
-if [[ -f "$GLOBAL_SIDECAR" ]]; then
-  VAULT_PATH="$(cat "$GLOBAL_SIDECAR")"
-  VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
-  VAULT_PATH="${VAULT_PATH%/}"
-  ACTIVE_SCOPE="global"
-fi
-
-if [[ -n "$PROJECT_SIDECAR" && -f "$PROJECT_SIDECAR" ]]; then
-  # Project sidecar uses key=value format
-  _proj_vault="$(grep '^vault-path=' "$PROJECT_SIDECAR" 2>/dev/null | cut -d= -f2- || true)"
-  if [[ -n "$_proj_vault" ]]; then
-    _proj_vault="${_proj_vault/#\~/$HOME}"
-    _proj_vault="${_proj_vault%/}"
-    # Project scope takes precedence if both exist (more specific)
-    VAULT_PATH="$_proj_vault"
-    ACTIVE_SCOPE="project"
-  fi
-fi
 
 # ── Hook presence check in settings.json ──────────────────────────────────────
 # Returns comma-separated list of events where our hooks are registered

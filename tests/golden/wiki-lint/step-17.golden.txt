@@ -1,0 +1,3 @@
+WARNING step-17: orphaned log entry — session=fixture-session-000 verb=session-end expected-file=raw/sessions/missing-deleted-session.md (was it deleted manually?)
+WARNING step-17: orphaned session file — raw/sessions/2026-04-01-1200-fixture-session.md has no log entry (may be from external import or manual copy)
+WARNING step-17: orphaned session file — raw/sessions/2026-04-02-0900-orphan-session.md has no log entry (may be from external import or manual copy)

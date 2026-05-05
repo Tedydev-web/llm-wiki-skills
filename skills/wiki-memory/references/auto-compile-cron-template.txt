@@ -1,0 +1,55 @@
+# wiki-memory auto-compile — cron template
+# Platform: Linux (and macOS as fallback to launchd)
+#
+# M4 NOTE — THIS FILE IS REFERENCE ONLY. Do not install this verbatim.
+# enable-hooks.sh emits a parametrized cron line at install time using the actual
+# claude_bin path resolved from your shell. Run:
+#   wiki-memory enable --auto-compile native
+# and copy the snippet it prints. This template exists only to document the cron
+# job structure (placeholders shown as /PATH/TO/...).
+#
+# SETUP INSTRUCTIONS
+# ──────────────────
+# 1. Get the absolute path to the worker script:
+#      find ~/.claude/skills -name auto-compile-worker.sh 2>/dev/null
+#
+# 2. Get the absolute path to the claude binary:
+#      command -v claude
+#    This is also stored in ~/.config/wiki/auto-compile.conf as claude_bin=
+#
+# 3. Edit your crontab:
+#      crontab -e
+#
+# 4. Add ONE of the lines below (replace placeholders with your actual paths):
+
+# ── Option A: Every 5 minutes ──────────────────────────────────────────────────
+# */5 * * * * PATH=/PATH/TO/CLAUDE/BIN_DIR:/usr/local/bin:/usr/bin:/bin HOME=/home/YOURUSER bash /PATH/TO/auto-compile-worker.sh --once >> /PATH/TO/VAULT/wiki/.worker.log 2>&1
+
+# ── Option B: Every 15 minutes (lower frequency, lower cost) ──────────────────
+# */15 * * * * PATH=/PATH/TO/CLAUDE/BIN_DIR:/usr/local/bin:/usr/bin:/bin HOME=/home/YOURUSER bash /PATH/TO/auto-compile-worker.sh --once >> /PATH/TO/VAULT/wiki/.worker.log 2>&1
+
+# ── Option C: Once per hour ────────────────────────────────────────────────────
+# 0 * * * * PATH=/PATH/TO/CLAUDE/BIN_DIR:/usr/local/bin:/usr/bin:/bin HOME=/home/YOURUSER bash /PATH/TO/auto-compile-worker.sh --once >> /PATH/TO/VAULT/wiki/.worker.log 2>&1
+
+# ── One-liner to append automatically (replace ALL_CAPS placeholders) ─────────
+# (crontab -l 2>/dev/null; echo '*/5 * * * * PATH=CLAUDE_BIN_DIR:/usr/local/bin:/usr/bin:/bin HOME=HOME_DIR bash WORKER_PATH --once >> VAULT_PATH/wiki/.worker.log 2>&1') | crontab -
+
+# ── Notes ──────────────────────────────────────────────────────────────────────
+# - PATH must include the directory containing the claude binary (F7 fix).
+#   If claude was installed via nvm/homebrew/pyenv, the default cron PATH will
+#   NOT find it. Always use the full directory, e.g.:
+#     /home/user/.nvm/versions/node/v20.0.0/bin
+#     /usr/local/bin   (homebrew on macOS/Linux)
+#     /opt/homebrew/bin  (homebrew on Apple Silicon)
+#
+# - HOME must be set so wiki-memory can read ~/.config/wiki/auto-compile.conf
+#   and ~/.config/wiki/sidecar.json.
+#
+# - The >> redirection appends logs; rotate with logrotate if needed.
+#
+# - To verify cron is running the worker:
+#     tail -f /PATH/TO/VAULT/wiki/.worker.log
+#
+# - To remove the cron entry:
+#     Run: /wiki-memory disable
+#     Or manually: crontab -e and delete the line.

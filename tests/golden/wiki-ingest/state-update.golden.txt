@@ -1,0 +1,4 @@
+WROTE: <VAULT>/wiki/.state.json (entry: raw/inbox/new-article.md)
+SCHEMA_OK: wiki/index.md already has _schema: 2
+WROTE: <VAULT>/wiki/.state.json (entry: raw/inbox/another.md)
+SCHEMA_MIGRATED: wiki/index.md _schema set to 2

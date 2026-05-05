@@ -1,0 +1,4 @@
+NO_WRITE_CONFIRMED: qa/ count unchanged (1 files) — --save not used
+READ_ONLY: wiki/index.md and wiki/log.md not modified by no-save query
+  index mtime: <MTIME> (unchanged)
+  log mtime: <MTIME> (unchanged)

@@ -12,6 +12,10 @@
   # Recursion guard: skip if invoked by another wiki-memory process
   [[ -n "${WIKI_MEMORY_INVOKED_BY:-}" ]] && exit 0
 
+  _HOOK_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  # shellcheck source=lib-vault-discovery.sh
+  source "$_HOOK_SCRIPT_DIR/lib-vault-discovery.sh"
+
   # ── Parse stdin ────────────────────────────────────────────────────────────
   stdin_json="$(cat)"
   source_field="$(jq -r '.source // empty' <<<"$stdin_json" 2>/dev/null)"
@@ -22,14 +26,13 @@
     exit 0
   fi
 
-  # ── Resolve vault path (3-tier lookup) ─────────────────────────────────────
+  # ── Resolve vault path via 5-step lib (step 4 uses session_cwd for walk-up) ──
+  # Override PWD temporarily so discover_vault() walk-up uses session_cwd if set.
   vault=""
-  if [[ -n "${WIKI_MEMORY_VAULT:-}" ]]; then
-    vault="$WIKI_MEMORY_VAULT"
-  elif [[ -f "$HOME/.config/wiki-memory/vault-path" ]]; then
-    vault="$(cat "$HOME/.config/wiki-memory/vault-path" | tr -d '[:space:]')"
-  elif [[ -n "$session_cwd" && -f "${session_cwd}/.claude/wiki-memory.conf" ]]; then
-    vault="$(grep -m1 '^vault=' "${session_cwd}/.claude/wiki-memory.conf" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')"
+  if [[ -n "$session_cwd" ]]; then
+    vault="$(cd "$session_cwd" 2>/dev/null && discover_vault 2>/dev/null || true)"
+  else
+    vault="$(discover_vault 2>/dev/null || true)"
   fi
 
   if [[ -z "$vault" ]]; then

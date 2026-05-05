@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  wiki-memory auto-compile — launchd template (macOS)
+  Platform: macOS (user-domain LaunchAgent)
+
+  SETUP INSTRUCTIONS
+  ──────────────────
+  1. Get your actual paths:
+       worker:     find ~/.claude/skills -name auto-compile-worker.sh 2>/dev/null
+       claude_bin: cat ~/.config/wiki/auto-compile.conf | grep claude_bin
+       vault:      cat ~/.config/wiki/sidecar.json | jq -r .vault_path
+
+  2. Copy this file to ~/Library/LaunchAgents/:
+       cp auto-compile-launchd-template.plist \
+          ~/Library/LaunchAgents/com.wiki-memory.compile.plist
+
+  3. Edit the plist — replace ALL placeholder values marked with REPLACE_ME.
+
+  4. Load the agent:
+       launchctl load ~/Library/LaunchAgents/com.wiki-memory.compile.plist
+
+  5. Verify it loaded:
+       launchctl list | grep wiki-memory
+
+  To unload (e.g., when running /wiki-memory disable):
+       launchctl unload ~/Library/LaunchAgents/com.wiki-memory.compile.plist
+       rm ~/Library/LaunchAgents/com.wiki-memory.compile.plist
+
+  Notes:
+  - StartInterval is 300 seconds (5 min). Adjust to taste.
+  - RunAtLoad=false prevents a run immediately on login (first run happens after interval).
+  - EnvironmentVariables PATH must include the directory containing claude (F7 fix).
+    Common locations:
+      /Users/YOURUSER/.nvm/versions/node/v20.0.0/bin   (nvm)
+      /opt/homebrew/bin                                  (Homebrew Apple Silicon)
+      /usr/local/bin                                     (Homebrew Intel)
+  - StandardOutPath / StandardErrorPath: logs rotate automatically by launchd
+    when the file exceeds 2 MB (default). Adjust if needed.
+-->
+<plist version="1.0">
+<dict>
+
+  <!-- Unique identifier for this LaunchAgent -->
+  <key>Label</key>
+  <string>com.wiki-memory.compile</string>
+
+  <!-- Command to run: bash + absolute path to worker -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>REPLACE_ME_WORKER_PATH</string><!-- e.g. /Users/you/.claude/skills/wiki-memory/scripts/auto-compile-worker.sh -->
+    <string>--once</string>
+  </array>
+
+  <!-- Run every 5 minutes (300 seconds) -->
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <!-- Do NOT run immediately on load -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- Stdout log (appended per run) -->
+  <key>StandardOutPath</key>
+  <string>REPLACE_ME_VAULT_PATH/wiki/.worker-stdout.log</string><!-- e.g. /Users/you/vault/wiki/.worker-stdout.log -->
+
+  <!-- Stderr log -->
+  <key>StandardErrorPath</key>
+  <string>REPLACE_ME_VAULT_PATH/wiki/.worker-stderr.log</string>
+
+  <!-- Environment variables: PATH must include claude binary directory (F7) -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>REPLACE_ME_CLAUDE_BIN_DIR:/usr/local/bin:/usr/bin:/bin</string><!-- e.g. /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin -->
+    <key>HOME</key>
+    <string>REPLACE_ME_HOME</string><!-- e.g. /Users/yourname -->
+  </dict>
+
+  <!-- Only run when AC power available (optional — remove if you want battery runs) -->
+  <!-- Uncomment to enable:
+  <key>ProcessType</key>
+  <string>Background</string>
+  -->
+
+</dict>
+</plist>

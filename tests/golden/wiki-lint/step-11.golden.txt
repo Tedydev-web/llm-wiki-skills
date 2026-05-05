@@ -1,0 +1,2 @@
+SUSPECT_CITATION: <VAULT>/wiki/concepts/bad-step-11.md: 7 suspect claims
+OK: step-11 inline citations: no pages with 3+ suspect claims

@@ -1,0 +1,1 @@
+CONTRADICTION: <VAULT>/wiki/entities/bad-step-03.md:12: Cloud provider DECLINED 5% in 2024 (sources: sample-note.md disagrees with conflicting-source.md).

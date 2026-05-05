@@ -1,7 +1,6 @@
 ---
 name: wiki-memory
 description: "Optional add-on: capture Claude Code session transcripts as wiki sources for later ingest. Off by default. Subcommands: enable, disable, status, flush, logs."
-model: claude-haiku-4-5-20251001
 allowed-tools: Bash Read Write Glob Grep
 ---
 

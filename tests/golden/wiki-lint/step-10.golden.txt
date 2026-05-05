@@ -1,0 +1,4 @@
+NEEDS_VERIFY: <VAULT>/wiki/entities/bad-step-10.md:12: Cloud provider market share reached 40% in Q3 2025 [needs verification].
+NEEDS_VERIFY: <VAULT>/wiki/entities/bad-step-10.md:13: Lambda cold starts improved by 50% with new runtime [needs verification].
+NEEDS_VERIFY: <VAULT>/wiki/entities/bad-step-10.md:14: Reserved instances now save up to 80% vs on-demand [needs verification].
+WARNING: step-10 found 3 [needs verification] flag(s) — classify as warning, not error

@@ -165,7 +165,7 @@ Runs at the end of the wizard, after Steps 1–5. Pre-creates `raw/sessions/` an
 
 Asks if user wants `wiki-memory` skill activated for session capture. Default is **N** (off). If yes, one follow-up:
 
-- **Q11a:** Scope — `global` (user-wide, stored in `~/.config/wiki-memory/vault-path`) or `project` (this vault only, stored in `<vault>/.claude/wiki-memory.conf`). Default: `global`.
+- **Q11a:** Scope — `global` (user-wide, stored in `~/.config/wiki/sidecar.json` — v1.2+ JSON format; legacy `~/.config/wiki-memory/vault-path` also supported for v1.1 installs) or `project` (this vault only, stored in `<vault>/.claude/wiki-memory.conf`). Default: `global`.
 
 (Auto-compile mode deferred to v1.2 per red-team C-1.)
 

@@ -1,0 +1,6 @@
+SLUG: whats-the-best-approachmethod
+WROTE: <VAULT>/wiki/qa/whats-the-best-approachmethod.md
+  frontmatter v2 fields: tags aliases question asked_at confidence answer_summary sources created updated
+  index entry: wiki/index.md ## Q&A section
+  log entry: <VAULT>/wiki/log.md
+  index Q&A section: exists

@@ -1,0 +1,5 @@
+WARNING step-14a: orphan qa file — <VAULT>/wiki/qa/bad-frontmatter-test.md (no inbound links or index entry)
+ERROR step-14b: <VAULT>/wiki/qa/bad-frontmatter-test.md missing required field: answer_summary
+ERROR step-14b: <VAULT>/wiki/qa/bad-frontmatter-test.md confidence='extremely-high' must be high|medium|low
+ERROR step-14b: <VAULT>/wiki/qa/bad-frontmatter-test.md sources field must be a list, not a bare string
+OK step-14c: wiki/index.md _schema: 2 (v2 vault)

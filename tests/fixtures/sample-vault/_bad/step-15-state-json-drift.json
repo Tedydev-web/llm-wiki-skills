@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": {
+    "raw/inbox/deleted-source.md": {
+      "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "ingested_at": "2026-01-01T10:00:00Z",
+      "ingested_into": [
+        "wiki/entities/deleted-entity.md",
+        "wiki/concepts/deleted-concept.md"
+      ]
+    }
+  }
+}

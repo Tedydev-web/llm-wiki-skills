@@ -16,7 +16,7 @@ You feed raw material (articles, papers, notes, transcripts) into a `raw/` folde
 | `/wiki-ingest` | Drop raw sources in, AI builds your wiki |
 | `/wiki-query` | Ask questions across everything you've fed it |
 | `/wiki-lint` | Health-check the knowledge base |
-| `/wiki-memory` | **(NEW v1.1)** Optional: auto-capture Claude Code sessions |
+| `/wiki-memory` | Optional: auto-capture Claude Code sessions (v1.1+, auto-compile v1.2+) |
 
 Plus a curated wiki schema with built-in protections against the regressions that real-world ingest experience tends to surface (see [CHANGELOG.md](CHANGELOG.md) for details).
 
@@ -48,7 +48,7 @@ Captured transcripts contain your full conversation, including any secrets, API 
     echo "wiki/.state.json" >> .gitignore
     echo "wiki/.memory.log" >> .gitignore
 
-**Capture-only mode (v1.1.0):** transcripts saved automatically; you run `/wiki-ingest` when ready. Auto-ingest mode planned for v1.2 with proper safeguards (recursion guard + cost ceiling).
+**Auto-compile mode (v1.2.0):** enable with `wiki-memory enable --auto-compile native` — transcripts enqueued after each session and automatically ingested via cron/launchd. Multi-layer recursion guard + daily cost cap included. Or run `/wiki-ingest` manually at your own pace.
 
 ## Prerequisites
 
@@ -149,11 +149,11 @@ Backwards compatible — existing vaults work unchanged.
 
 **Step-by-step walkthrough:**
 
-    npx skills update -g           # pulls v1.1.0
+    npx skills update -g           # pulls v1.2.0
     /wiki                          # idempotent — picks up missing dirs only
     /wiki-ingest                   # creates wiki/.state.json + sets _schema: 2
-    /wiki-lint                     # 16-step audit (vs 13 before)
-    # Optional: /wiki-memory enable
+    /wiki-lint                     # 17-step audit (vs 13 before)
+    # Optional: /wiki-memory enable [--auto-compile native]
 
 Notes: the first `/wiki-ingest` after update treats all existing files as new (one-time cost) to build the SHA256 state index. State tracking is cumulative from then on.
 

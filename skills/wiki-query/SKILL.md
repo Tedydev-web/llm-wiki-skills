@@ -12,6 +12,8 @@ allowed-tools: Bash Read Write Edit Glob Grep
 
 Answer questions by searching and synthesizing knowledge from the wiki.
 
+**Vault path:** read from `$WIKI_MEMORY_VAULT` env, else `cat ~/.config/wiki/sidecar.json | jq -r .vault_path`, else `cat ~/.config/wiki-memory/vault-path` (legacy), else ask user.
+
 ## Search Strategy
 
 ### 1. Start with the index

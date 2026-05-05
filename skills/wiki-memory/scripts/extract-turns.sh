@@ -46,7 +46,10 @@ JQ_FILTER='
 '
 
 # Write extracted turns to a temp file (bash 3.2: no mapfile, use file + while)
-turns_file="$(mktemp /tmp/wiki-turns-XXXXXX.txt)"
+# Use PID in name for concurrent safety; macOS mktemp rejects non-X extensions.
+_turns_base="$(mktemp /tmp/wiki-turns-$$-XXXXXX)"
+turns_file="${_turns_base}.txt"
+mv "$_turns_base" "$turns_file" 2>/dev/null || turns_file="$_turns_base"
 jq -rc "$JQ_FILTER" "$TRANSCRIPT_PATH" 2>/dev/null | tail -n "$MAX_TURNS" > "$turns_file"
 
 # Count lines
@@ -62,7 +65,10 @@ fi
 
 # Build output respecting max_chars budget
 # Write to a second temp file so we can check size before emitting
-output_file="$(mktemp /tmp/wiki-output-XXXXXX.md)"
+# PID-prefixed for concurrent safety; macOS mktemp rejects non-X extensions.
+_out_base="$(mktemp /tmp/wiki-output-$$-XXXXXX)"
+output_file="${_out_base}.md"
+mv "$_out_base" "$output_file" 2>/dev/null || output_file="$_out_base"
 total_chars=0
 first=true
 

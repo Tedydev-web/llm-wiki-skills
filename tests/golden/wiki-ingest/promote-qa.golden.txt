@@ -1,0 +1,6 @@
+PROMOTED: wiki/concepts/how-does-sample-concept-work.md
+  tags: [concept, promoted-from-qa]
+  created: 2026-04-01
+  updated: 2026-05-05
+  source qa: wiki/qa/how-does-sample-concept-work.md (kept, not deleted)
+  body: ## Answer section found (will become concept body)

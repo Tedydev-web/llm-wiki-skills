@@ -136,12 +136,10 @@ check_tool() {
     echo "  [missing] $name — install with: $install_cmd" >&2
   fi
 
-  TOOLS_JSON=$(echo "$TOOLS_JSON" | python3 -c "
-import sys, json
-tools = json.load(sys.stdin)
-tools.append({'name': '$name', 'status': '$status', 'install': '$install_cmd'})
-print(json.dumps(tools))
-" 2>/dev/null || echo "$TOOLS_JSON")
+  # Build JSON array with jq (no Python dependency — per ADR 002).
+  TOOLS_JSON="$(printf '%s' "$TOOLS_JSON" | \
+    jq --arg n "$name" --arg s "$status" --arg i "$install_cmd" \
+    '. + [{"name": $n, "status": $s, "install": $i}]' 2>/dev/null || printf '%s' "$TOOLS_JSON")"
 }
 
 check_tool "summarize" "summarize" "npm i -g @steipete/summarize"
@@ -159,9 +157,17 @@ mkdir -p "$VAULT_DIR/raw/sessions" "$VAULT_DIR/wiki/qa"
 MEMORY_STATUS="skipped"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Idempotency: skip Q11 if hooks already active for this vault
-_SIDECAR_PATH="$HOME/.config/wiki-memory/vault-path"
-if [[ -f "$_SIDECAR_PATH" ]] && grep -qF "$VAULT_DIR" "$_SIDECAR_PATH" 2>/dev/null; then
+# Idempotency: skip Q11 if hooks already active for this vault.
+# Check both new JSON sidecar (v1.2+) and legacy plain-text sidecar (v1.1).
+_NEW_SIDECAR="${XDG_CONFIG_HOME:-$HOME/.config}/wiki/sidecar.json"
+_OLD_SIDECAR="${XDG_CONFIG_HOME:-$HOME/.config}/wiki-memory/vault-path"
+_sidecar_vault=""
+if [[ -f "$_NEW_SIDECAR" ]]; then
+  _sidecar_vault="$(jq -r '.vault_path // empty' "$_NEW_SIDECAR" 2>/dev/null || true)"
+elif [[ -f "$_OLD_SIDECAR" ]]; then
+  _sidecar_vault="$(cat "$_OLD_SIDECAR" 2>/dev/null | tr -d '[:space:]' || true)"
+fi
+if [[ -n "$_sidecar_vault" ]] && [[ "$_sidecar_vault" == "$VAULT_DIR" ]]; then
   echo "" >&2
   echo "Memory capture already active for this vault. Skipping Q11." >&2
   MEMORY_STATUS="already-active"

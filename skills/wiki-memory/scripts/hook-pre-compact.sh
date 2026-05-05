@@ -12,6 +12,8 @@
   [[ -n "${WIKI_MEMORY_INVOKED_BY:-}" ]] && exit 0
 
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  # shellcheck source=lib-vault-discovery.sh
+  source "$SCRIPT_DIR/lib-vault-discovery.sh"
   MIN_TURNS=5
 
   # ── Parse stdin ────────────────────────────────────────────────────────────
@@ -25,14 +27,12 @@
     exit 0
   fi
 
-  # ── Resolve vault path (3-tier lookup) ─────────────────────────────────────
+  # ── Resolve vault path via 5-step lib ─────────────────────────────────────
   vault=""
-  if [[ -n "${WIKI_MEMORY_VAULT:-}" ]]; then
-    vault="$WIKI_MEMORY_VAULT"
-  elif [[ -f "$HOME/.config/wiki-memory/vault-path" ]]; then
-    vault="$(cat "$HOME/.config/wiki-memory/vault-path" | tr -d '[:space:]')"
-  elif [[ -n "$session_cwd" && -f "${session_cwd}/.claude/wiki-memory.conf" ]]; then
-    vault="$(grep -m1 '^vault=' "${session_cwd}/.claude/wiki-memory.conf" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')"
+  if [[ -n "$session_cwd" ]]; then
+    vault="$(cd "$session_cwd" 2>/dev/null && discover_vault 2>/dev/null || true)"
+  else
+    vault="$(discover_vault 2>/dev/null || true)"
   fi
 
   if [[ -z "$vault" ]]; then
@@ -62,7 +62,11 @@
 
   # ── Extract turns ──────────────────────────────────────────────────────────
   max_chars="${WIKI_MEMORY_MAX_CHARS:-15000}"
-  tmp_file="$(mktemp /tmp/wiki-memory-compact-XXXXXX.md)"
+  # Use PID prefix for uniqueness under concurrent execution.
+  # macOS mktemp does not support non-X suffixes after the XXXXXX pattern.
+  _tmp_base="$(mktemp /tmp/wiki-compact-$$-XXXXXX)"
+  tmp_file="${_tmp_base}.md"
+  mv "$_tmp_base" "$tmp_file" 2>/dev/null || tmp_file="$_tmp_base"
 
   bash "${SCRIPT_DIR}/extract-turns.sh" "$transcript_path" 30 "$max_chars" > "$tmp_file" 2>/dev/null
 

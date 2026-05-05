@@ -1,0 +1,2 @@
+INFO: .state.json absent or corrupt — treating as empty
+INGEST raw/inbox/sample-note.md (no prior state)
