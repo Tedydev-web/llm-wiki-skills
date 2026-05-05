@@ -1,0 +1,110 @@
+{"type":"message","message":{"role":"user","content":"What is object-oriented programming?","timestamp":"2025-05-01T10:00:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"Object-oriented programming (OOP) is a paradigm based on objects and classes. It focuses on encapsulation, inheritance, and polymorphism to organize code.","timestamp":"2025-05-01T10:00:05Z"}}
+{"type":"message","message":{"role":"user","content":"Can you explain inheritance?","timestamp":"2025-05-01T10:00:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Inheritance allows a class to inherit properties and methods from another class. It promotes code reuse and establishes relationships between classes.","timestamp":"2025-05-01T10:00:15Z"}}
+{"type":"message","message":{"role":"user","content":"What about polymorphism?","timestamp":"2025-05-01T10:00:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Polymorphism means many forms. It allows objects to be used in multiple ways through method overriding and interfaces.","timestamp":"2025-05-01T10:00:25Z"}}
+{"type":"message","message":{"role":"user","content":"How do we use interfaces?","timestamp":"2025-05-01T10:00:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Interfaces define contracts that classes must implement. They specify methods without providing implementation details.","timestamp":"2025-05-01T10:00:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is encapsulation?","timestamp":"2025-05-01T10:00:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Encapsulation bundles data and methods together, hiding internal details from the outside. It uses access modifiers like private, protected, and public.","timestamp":"2025-05-01T10:00:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain the Single Responsibility Principle","timestamp":"2025-05-01T10:00:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"SRP states that a class should have only one reason to change. Each class should handle a single responsibility.","timestamp":"2025-05-01T10:00:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is DRY?","timestamp":"2025-05-01T10:01:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"DRY (Don't Repeat Yourself) encourages code reuse. Extract duplicated logic into shared functions or methods.","timestamp":"2025-05-01T10:01:05Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about KISS","timestamp":"2025-05-01T10:01:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"KISS (Keep It Simple, Stupid) advocates for simple solutions. Avoid unnecessary complexity.","timestamp":"2025-05-01T10:01:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is YAGNI?","timestamp":"2025-05-01T10:01:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"YAGNI (You Aren't Gonna Need It) advises against adding features you don't currently need.","timestamp":"2025-05-01T10:01:25Z"}}
+{"type":"message","message":{"role":"user","content":"How do we handle errors?","timestamp":"2025-05-01T10:01:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Use try-catch blocks for recoverable errors. Log errors with context and provide meaningful error messages.","timestamp":"2025-05-01T10:01:35Z"}}
+{"type":"message","message":{"role":"user","content":"What about testing?","timestamp":"2025-05-01T10:01:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Testing ensures code quality. Use unit tests, integration tests, and end-to-end tests. Aim for high coverage.","timestamp":"2025-05-01T10:01:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain TDD","timestamp":"2025-05-01T10:01:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Test-Driven Development: write tests first, then code. Red-Green-Refactor cycle ensures quality.","timestamp":"2025-05-01T10:01:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is a mock?","timestamp":"2025-05-01T10:02:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"A mock is a fake object replacing a real dependency. Mocks help isolate code under test.","timestamp":"2025-05-01T10:02:05Z"}}
+{"type":"message","message":{"role":"user","content":"How do we refactor?","timestamp":"2025-05-01T10:02:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Refactoring improves code without changing behavior. Start with tests, make small changes, verify tests pass.","timestamp":"2025-05-01T10:02:15Z"}}
+{"type":"message","message":{"role":"user","content":"What about design patterns?","timestamp":"2025-05-01T10:02:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Design patterns are reusable solutions to common problems. Examples: Singleton, Factory, Observer, Strategy.","timestamp":"2025-05-01T10:02:25Z"}}
+{"type":"message","message":{"role":"user","content":"Explain the Singleton pattern","timestamp":"2025-05-01T10:02:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Singleton ensures only one instance of a class exists. Provides global access to that instance.","timestamp":"2025-05-01T10:02:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is the Factory pattern?","timestamp":"2025-05-01T10:02:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Factory pattern creates objects without specifying exact classes. Centralizes object creation logic.","timestamp":"2025-05-01T10:02:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain Observer pattern","timestamp":"2025-05-01T10:02:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Observer pattern defines one-to-many dependencies. When one object changes, all observers are notified.","timestamp":"2025-05-01T10:02:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is Strategy pattern?","timestamp":"2025-05-01T10:03:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"Strategy pattern encapsulates algorithms as interchangeable objects. Lets clients choose algorithms at runtime.","timestamp":"2025-05-01T10:03:05Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about Decorator pattern","timestamp":"2025-05-01T10:03:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Decorator pattern attaches additional responsibilities to objects dynamically. Alternative to subclassing.","timestamp":"2025-05-01T10:03:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is Adapter pattern?","timestamp":"2025-05-01T10:03:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Adapter pattern converts interface of a class into another clients expect. Makes incompatible interfaces compatible.","timestamp":"2025-05-01T10:03:25Z"}}
+{"type":"message","message":{"role":"user","content":"Explain Facade pattern","timestamp":"2025-05-01T10:03:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Facade provides unified interface to subsystem. Simplifies complex interactions.","timestamp":"2025-05-01T10:03:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is Proxy pattern?","timestamp":"2025-05-01T10:03:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Proxy pattern provides placeholder or surrogate for another object. Controls access to the real object.","timestamp":"2025-05-01T10:03:45Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about Builder pattern","timestamp":"2025-05-01T10:03:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Builder pattern separates construction from representation. Allows step-by-step object construction.","timestamp":"2025-05-01T10:03:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is Repository pattern?","timestamp":"2025-05-01T10:04:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"Repository pattern abstracts data access. Centralizes queries and persistence logic.","timestamp":"2025-05-01T10:04:05Z"}}
+{"type":"message","message":{"role":"user","content":"Explain Dependency Injection","timestamp":"2025-05-01T10:04:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"DI provides dependencies to objects rather than objects creating them. Reduces coupling and improves testability.","timestamp":"2025-05-01T10:04:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is a container?","timestamp":"2025-05-01T10:04:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"A DI container manages object creation and dependencies. Automatically wires objects together.","timestamp":"2025-05-01T10:04:25Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about configuration management","timestamp":"2025-05-01T10:04:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Configuration management externalizes settings. Allows different configurations for different environments.","timestamp":"2025-05-01T10:04:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is logging?","timestamp":"2025-05-01T10:04:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Logging records events during execution. Essential for debugging and monitoring.","timestamp":"2025-05-01T10:04:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain log levels","timestamp":"2025-05-01T10:04:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Log levels: DEBUG (detailed), INFO (informational), WARN (warnings), ERROR (errors), FATAL (critical).","timestamp":"2025-05-01T10:04:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is structured logging?","timestamp":"2025-05-01T10:05:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"Structured logging uses key-value pairs. Enables better parsing and analysis of logs.","timestamp":"2025-05-01T10:05:05Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about performance optimization","timestamp":"2025-05-01T10:05:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Profile first to identify bottlenecks. Optimize hot paths. Cache when appropriate. Measure improvements.","timestamp":"2025-05-01T10:05:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is memoization?","timestamp":"2025-05-01T10:05:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Memoization caches function results. Avoids redundant computations for same inputs.","timestamp":"2025-05-01T10:05:25Z"}}
+{"type":"message","message":{"role":"user","content":"Explain lazy loading","timestamp":"2025-05-01T10:05:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Lazy loading defers object creation until needed. Reduces startup time and memory usage.","timestamp":"2025-05-01T10:05:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is concurrency?","timestamp":"2025-05-01T10:05:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Concurrency allows multiple tasks to progress. Uses threads, processes, or async programming.","timestamp":"2025-05-01T10:05:45Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about async/await","timestamp":"2025-05-01T10:05:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Async/await simplifies asynchronous code. Makes async code look synchronous.","timestamp":"2025-05-01T10:05:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is a promise?","timestamp":"2025-05-01T10:06:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"A promise represents eventual completion of async operation. Has states: pending, fulfilled, rejected.","timestamp":"2025-05-01T10:06:05Z"}}
+{"type":"message","message":{"role":"user","content":"Explain callback functions","timestamp":"2025-05-01T10:06:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Callbacks are functions passed to other functions. Called when event occurs or task completes.","timestamp":"2025-05-01T10:06:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is callback hell?","timestamp":"2025-05-01T10:06:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Callback hell: deeply nested callbacks making code hard to read. Solved by promises or async/await.","timestamp":"2025-05-01T10:06:25Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about streams","timestamp":"2025-05-01T10:06:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Streams process data in chunks. Reduce memory usage for large datasets.","timestamp":"2025-05-01T10:06:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is REST?","timestamp":"2025-05-01T10:06:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"REST (Representational State Transfer): architectural style for networked apps. Uses HTTP methods and resources.","timestamp":"2025-05-01T10:06:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain HTTP methods","timestamp":"2025-05-01T10:06:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"GET (retrieve), POST (create), PUT (update), DELETE (delete), PATCH (partial update).","timestamp":"2025-05-01T10:06:55Z"}}
+{"type":"message","message":{"role":"user","content":"What are status codes?","timestamp":"2025-05-01T10:07:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"2xx (success), 3xx (redirect), 4xx (client error), 5xx (server error).","timestamp":"2025-05-01T10:07:05Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about authentication","timestamp":"2025-05-01T10:07:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"Authentication verifies identity. Methods: password, token, OAuth, SAML.","timestamp":"2025-05-01T10:07:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is authorization?","timestamp":"2025-05-01T10:07:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"Authorization grants permissions after authentication. Controls what authenticated users can do.","timestamp":"2025-05-01T10:07:25Z"}}
+{"type":"message","message":{"role":"user","content":"Explain JWT","timestamp":"2025-05-01T10:07:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"JWT (JSON Web Token) is stateless authentication. Contains header, payload, signature.","timestamp":"2025-05-01T10:07:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is session management?","timestamp":"2025-05-01T10:07:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Sessions maintain user state. Store session ID in cookies or tokens.","timestamp":"2025-05-01T10:07:45Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about CORS","timestamp":"2025-05-01T10:07:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"CORS (Cross-Origin Resource Sharing) allows safe cross-origin requests. Prevents unauthorized access.","timestamp":"2025-05-01T10:07:55Z"}}
+{"type":"message","message":{"role":"user","content":"What is CSRF?","timestamp":"2025-05-01T10:08:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"CSRF (Cross-Site Request Forgery) attack exploits user trust. Use CSRF tokens to prevent.","timestamp":"2025-05-01T10:08:05Z"}}
+{"type":"message","message":{"role":"user","content":"Explain SQL injection","timestamp":"2025-05-01T10:08:10Z"}}
+{"type":"message","message":{"role":"assistant","content":"SQL injection inserts malicious SQL. Use parameterized queries or ORMs to prevent.","timestamp":"2025-05-01T10:08:15Z"}}
+{"type":"message","message":{"role":"user","content":"What is XSS?","timestamp":"2025-05-01T10:08:20Z"}}
+{"type":"message","message":{"role":"assistant","content":"XSS (Cross-Site Scripting) injects malicious scripts. Sanitize user input and use content security policy.","timestamp":"2025-05-01T10:08:25Z"}}
+{"type":"message","message":{"role":"user","content":"Tell me about encryption","timestamp":"2025-05-01T10:08:30Z"}}
+{"type":"message","message":{"role":"assistant","content":"Encryption transforms data into unreadable form. Use TLS/SSL for transport security.","timestamp":"2025-05-01T10:08:35Z"}}
+{"type":"message","message":{"role":"user","content":"What is hashing?","timestamp":"2025-05-01T10:08:40Z"}}
+{"type":"message","message":{"role":"assistant","content":"Hashing converts data to fixed-length value. One-way function. Used for passwords.","timestamp":"2025-05-01T10:08:45Z"}}
+{"type":"message","message":{"role":"user","content":"Explain salt in hashing","timestamp":"2025-05-01T10:08:50Z"}}
+{"type":"message","message":{"role":"assistant","content":"Salt is random data added before hashing. Prevents rainbow table attacks.","timestamp":"2025-05-01T10:08:55Z"}}
+{"type":"message","message":{"role":"user","content":"Final summary please","timestamp":"2025-05-01T10:09:00Z"}}
+{"type":"message","message":{"role":"assistant","content":"We covered OOP, design patterns, testing, performance, security, and best practices. Master these fundamentals for quality software.","timestamp":"2025-05-01T10:09:05Z"}}

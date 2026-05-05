@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "description": "Incomplete entry
+        "script": "/path/to/hook.sh"
+      }
+    ]
+  }
+}

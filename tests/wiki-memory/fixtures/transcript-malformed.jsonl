@@ -1,0 +1,5 @@
+{"role":"user","content":"This is valid JSON"}
+{"role":"assistant","content":"But this line is broken - missing closing quote: "test content
+{"role":"user","content":"This one is valid again"}
+{broken json on this line
+{"role":"assistant","content":"Valid again","timestamp":"2025-05-01T10:00:00Z"}

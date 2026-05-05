@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "description": "Some other hook",
+        "script": "/path/to/some/other/hook.sh"
+      }
+    ],
+    "PreCompact": [
+      {
+        "description": "Custom pre-compact hook",
+        "script": "/path/to/custom/hook.sh"
+      }
+    ]
+  }
+}

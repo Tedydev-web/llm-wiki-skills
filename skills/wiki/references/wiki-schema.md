@@ -1,10 +1,44 @@
 # Wiki Schema
 
+**Schema v2 (2026-05-05) — backwards compatible with v1 vaults.**
+
 Canonical rules for LLM-maintained knowledge base wikis. This is the single source of truth — agent config templates pull from this document.
+
+## Vault Layout
+
+Three top-level directories, three roles:
+
+- **raw/** — immutable source documents. The LLM reads from here but NEVER modifies these files.
+- **wiki/** — the LLM's workspace. Create, update, and maintain all files here.
+- **output/** — reports, query results, and generated artifacts go here.
+
+Full vault tree:
+
+```
+vault-root/
+├── raw/
+│   ├── assets/                        # downloaded images (see Image Handling)
+│   ├── <clipped-articles>.md          # web-clipped or imported source docs
+│   └── sessions/                      # NEW v2: auto-captured Claude Code transcripts
+├── wiki/
+│   ├── sources/                       # one summary page per ingested source
+│   ├── entities/                      # pages for people, organizations, products, tools
+│   ├── concepts/                      # pages for ideas, frameworks, theories, patterns
+│   ├── synthesis/                     # comparisons, analyses, cross-cutting themes
+│   ├── qa/                            # NEW v2: Q&A artifacts from /wiki-query --save
+│   ├── index.md                       # master catalog, updated on every ingest
+│   ├── log.md                         # append-only chronological record
+│   ├── cache.md                       # rolling ~500-word hot summary
+│   ├── .state.json                    # NEW v2: incremental ingest state
+│   └── .memory.log                    # NEW v2: append-only memory ops log
+└── output/                            # reports, query results, generated artifacts
+```
+
+> **Note on `wiki/index.md` version marker:** As of schema v2, `wiki/index.md` MUST include `_schema: 2` in its YAML frontmatter as the canonical version field. `/wiki-ingest` sets this automatically on first v2 run; existing v1 vaults missing the field are treated as v1 and upgraded on next ingest.
 
 ## Architecture
 
-Three directories, three roles:
+Three directories, three roles (see Vault Layout above for full tree):
 
 - **raw/** — immutable source documents. The LLM reads from here but NEVER modifies these files.
 - **wiki/** — the LLM's workspace. Create, update, and maintain all files here.
@@ -15,9 +49,10 @@ Wiki subdirectories:
 - `wiki/entities/` — pages for people, organizations, products, tools
 - `wiki/concepts/` — pages for ideas, frameworks, theories, patterns
 - `wiki/synthesis/` — comparisons, analyses, cross-cutting themes
+- `wiki/qa/` — NEW v2: Q&A artifacts saved via `/wiki-query --save` (see §Q&A Articles)
 
 Three special files:
-- `wiki/index.md` — master catalog of every wiki page, organized by category. Update on every ingest.
+- `wiki/index.md` — master catalog of every wiki page, organized by category. Update on every ingest. Must include `_schema: 2` frontmatter field (v2).
 - `wiki/log.md` — append-only chronological record. Never edit existing entries.
 - `wiki/cache.md` — rolling ~500-word summary of recent activity. Read FIRST on session startup for fast orientation. Auto-updated by ingest (append) + lint (regen).
 
@@ -34,6 +69,8 @@ Every wiki page MUST include YAML frontmatter:
     ---
 
 Use `[[wikilink]]` syntax for all internal links. When you mention a concept, entity, or source that has its own page, link it.
+
+> **QA pages** (`wiki/qa/`) use specialized v2 frontmatter — see §Q&A Articles for the full field spec. Standard page frontmatter does NOT apply to QA files.
 
 ### `wiki/cache.md` format
 
@@ -190,6 +227,169 @@ Run a lint pass (`/wiki-lint`) on this schedule:
 - **Monthly at minimum** — catches stale claims and orphan pages that accumulate over time
 - **Before any major query or synthesis** — ensures the wiki is healthy before you rely on it for analysis
 
+## Q&A Articles (wiki/qa/)
+
+### Purpose
+
+Q&A articles persist valuable question-answer pairs as first-class wiki artifacts. They are created by `/wiki-query --save`, validated by `/wiki-lint` step 14, and can be promoted to full concept pages via `/wiki-ingest --promote-qa <slug>`.
+
+### Naming
+
+- Filenames use **kebab-case slug**, max 60 characters, `.md` extension
+- Example: `wiki/qa/how-does-incremental-ingest-work.md`
+- SHA1 prefix fallback for slug collisions: `wiki/qa/<sha1-7>-<truncated-slug>.md`
+
+### v2 Frontmatter Spec
+
+QA articles use specialized frontmatter. All 9 fields are required:
+
+| Field            | Type             | Required | Description                                                    |
+|------------------|------------------|----------|----------------------------------------------------------------|
+| `tags`           | list[str]        | yes      | Always includes `qa`; add topic tags                          |
+| `aliases`        | list[str]        | yes      | First entry = verbatim original question                      |
+| `question`       | str              | yes      | Verbatim original question (quote if special chars present)   |
+| `asked_at`       | ISO datetime     | yes      | When the question was asked (e.g. `2026-05-05T10:21:00Z`)    |
+| `confidence`     | enum             | yes      | `high` / `medium` / `low`                                     |
+| `answer_summary` | str              | yes      | One-sentence TL;DR of the answer                              |
+| `sources`        | list[path]       | yes      | Cited wiki articles (wikilinks resolved to relative paths)    |
+| `created`        | date             | yes      | Creation date (YYYY-MM-DD)                                    |
+| `updated`        | date             | yes      | Last edit date (YYYY-MM-DD)                                   |
+
+Example:
+
+    ---
+    tags: [qa, ingest, incremental]
+    aliases: ["How does incremental ingest work?"]
+    question: "How does incremental ingest work?"
+    asked_at: 2026-05-05T10:21:00Z
+    confidence: high
+    answer_summary: "/wiki-ingest checks .state.json SHA-256 hashes to skip unchanged files."
+    sources: [wiki/concepts/incremental-ingest.md]
+    created: 2026-05-05
+    updated: 2026-05-05
+    ---
+
+### Body Template
+
+    # <Question as Title>
+
+    ## Answer
+    Full answer text with `[[wikilinks]]` to cited pages.
+
+    ## Reasoning
+    How the answer was derived; note any uncertainty or assumptions.
+
+    ## Related
+    - [[Related Concept One]]
+    - [[Related Concept Two]]
+
+### Lifecycle
+
+1. **Created** — by `/wiki-query --save` at end of a query session
+2. **Validated** — by `/wiki-lint` step 14 (checks all 9 required fields, slug length)
+3. **Promoted** — optional: `/wiki-ingest --promote-qa <slug>` converts to `wiki/concepts/` page, removes QA from `wiki/qa/`
+4. **Index** — every QA article is listed under a `Q&A` category header in `wiki/index.md`
+
+---
+
+## State Tracking (wiki/.state.json)
+
+### Purpose
+
+`.state.json` enables incremental ingest: `/wiki-ingest` skips files whose SHA-256 hash matches the stored value, avoiding redundant re-processing of unchanged sources.
+
+### Format
+
+```json
+{
+  "version": 1,
+  "files": {
+    "<relative-path-from-vault-root>": {
+      "sha256": "<64-char-hex>",
+      "ingested_at": "<ISO-datetime>",
+      "ingested_into": ["<wiki-relative-path>", "..."]
+    }
+  }
+}
+```
+
+Field notes:
+- `version` — always `1` (schema version of the state file itself)
+- `files` — map of vault-relative paths to ingest records
+- `sha256` — SHA-256 hex digest of the source file at ingest time
+- `ingested_at` — ISO-8601 datetime when ingest ran
+- `ingested_into` — list of wiki pages created/updated by this ingest
+
+### Lifecycle
+
+- **Created/updated** — by `/wiki-ingest` after each successful file ingest
+- **Validated** — by `/wiki-lint` step 15 (checks JSON validity, version=1, no stale paths)
+- **Manual reset** — `rm wiki/.state.json` forces full re-ingest on next run
+
+### Security Note (S-5)
+
+`.state.json` records vault-relative file paths. If the vault is in a public git repository, these paths may leak directory structure. **Recommendation:** add `wiki/.state.json` to `.gitignore` for public vaults.
+
+---
+
+## Memory Log (wiki/.memory.log)
+
+### Append-Only Contract
+
+`.memory.log` is a plain-text append-only log. **Never edit or delete historical entries.** Only append new lines. Tools that read this file must handle partial/truncated content gracefully.
+
+### Format
+
+Each line:
+
+    <ISO-timestamp> <operation> <session_id_or_filename> <details>
+
+- `ISO-timestamp` — UTC, format `2026-05-05T10:21:00Z`
+- `operation` — one of the operations listed below
+- `session_id_or_filename` — short identifier (session ID hash or target filename)
+- `details` — free-form context (e.g. `-> raw/sessions/2026-05-05-1021-abc12345.md`)
+
+### Operations
+
+| Operation      | Triggered by                              | Description                                  |
+|----------------|-------------------------------------------|----------------------------------------------|
+| `session-end`  | SessionEnd hook                           | Session transcript saved to `raw/sessions/`  |
+| `pre-compact`  | PreCompact hook                           | Pre-compact snapshot saved to `raw/sessions/`|
+| `flush-manual` | `/wiki-memory flush`                      | Manual flush triggered by user               |
+| `enable`       | `/wiki-memory enable`                     | wiki-memory add-on activated                 |
+| `disable`      | `/wiki-memory disable`                    | wiki-memory add-on deactivated               |
+| `qa-save`      | `/wiki-query --save`                      | Q&A article saved to `wiki/qa/`              |
+| `promote-qa`   | `/wiki-ingest --promote-qa <slug>`        | QA article promoted to concept page          |
+
+### Example Entries
+
+    2026-05-05T10:21:00Z session-end abc12345 -> raw/sessions/2026-05-05-1021-abc12345.md
+    2026-05-05T10:25:00Z pre-compact abc12345 -> raw/sessions/pre-compact-2026-05-05-1025-abc12345.md
+    2026-05-05T11:00:00Z qa-save how-does-x-work -> wiki/qa/how-does-x-work.md
+    2026-05-05T11:30:00Z enable scope=global
+    2026-05-05T12:00:00Z promote-qa how-does-x-work -> wiki/concepts/how-does-x-work.md
+
+---
+
+## Optional Add-on: wiki-memory
+
+`wiki-memory` is an opt-in add-on that automatically captures Claude Code session transcripts into `raw/sessions/` and feeds them into the wiki ingest pipeline. When enabled, three hooks fire automatically: **SessionEnd** (saves full transcript), **PreCompact** (saves pre-compaction snapshot), and **SessionStart** (loads `wiki/cache.md` for fast orientation). The add-on is **OFF by default** — activate via `/wiki` setup wizard (Q11) or `/wiki-memory enable`. Disabling with `/wiki-memory disable` leaves existing session files intact.
+
+For full spec, session filename conventions, hook payloads, and configuration options, see `skills/wiki-memory/SKILL.md`.
+
+---
+
+## Migration: v1 → v2
+
+Existing v1 vaults are **fully backwards compatible**. No data migration is required.
+
+- **Missing directories** (`raw/sessions/`, `wiki/qa/`) are auto-created on the next `/wiki` re-run or on first `/wiki-memory enable`
+- **`.state.json`** and **`.memory.log`** are created on first use; absent files are treated as empty state
+- **`_schema: 2`** field in `wiki/index.md` is set automatically by `/wiki-ingest` on first v2 run; missing field = treat as v1 vault (upgrade path)
+- No existing pages, links, or frontmatter are modified during migration
+
+---
+
 ## Tools
 
 You have access to these CLI tools — use them when appropriate:
@@ -214,3 +414,7 @@ You have access to these CLI tools — use them when appropriate:
 12. When a claim has no source, append `[needs verification]` so the next lint pass surfaces it for follow-up research.
 13. Lint passes MUST flag `[needs verification]` markers and orphan claims with no inline citation on aggregator pages.
 14. Entity and concept pages MUST have `aliases: [<H1 Title Case>]` in YAML frontmatter — required for Obsidian wikilink resolution between kebab-case filenames and Title Case wikilinks.
+15. Q&A articles in `wiki/qa/` MUST use v2 specialized frontmatter with all 9 required fields (`tags`, `aliases`, `question`, `asked_at`, `confidence`, `answer_summary`, `sources`, `created`, `updated`). Standard page frontmatter is not sufficient.
+16. `wiki/.state.json` MUST be valid JSON with `version` set to `1`. Malformed or missing-version state files must be rejected and regenerated.
+17. `wiki/.memory.log` is append-only. Historical entries MUST NOT be edited or deleted. Tools reading this file must tolerate partial content.
+18. `wiki/index.md` MUST have `_schema: 2` in its YAML frontmatter as the canonical schema version marker for the vault. `/wiki-ingest` sets this on first v2 run; lint step validates its presence.

@@ -16,8 +16,39 @@ You feed raw material (articles, papers, notes, transcripts) into a `raw/` folde
 | `/wiki-ingest` | Drop raw sources in, AI builds your wiki |
 | `/wiki-query` | Ask questions across everything you've fed it |
 | `/wiki-lint` | Health-check the knowledge base |
+| `/wiki-memory` | **(NEW v1.1)** Optional: auto-capture Claude Code sessions |
 
 Plus a curated wiki schema with built-in protections against the regressions that real-world ingest experience tends to surface (see [CHANGELOG.md](CHANGELOG.md) for details).
+
+## Optional Add-ons
+
+### `/wiki-memory` (v1.1+)
+
+Off by default. Auto-captures your Claude Code session transcripts as raw sources for later wiki ingest. Three hooks: SessionEnd (auto-save), PreCompact (anti-loss flush), SessionStart (context priming).
+
+**Enable:**
+
+    /wiki-memory enable
+    /wiki-memory enable --scope project
+
+**Toggle off:**
+
+    /wiki-memory disable
+
+**Manage:**
+
+    /wiki-memory status     # check active hooks + capture count
+    /wiki-memory flush      # manual flush current session
+    /wiki-memory logs       # tail .memory.log
+
+**⚠️ Privacy notice:**
+Captured transcripts contain your full conversation, including any secrets, API keys, or sensitive content you've pasted. Review before committing the vault to a shared git repo. Recommend adding to your vault's `.gitignore`:
+
+    echo "raw/sessions/" >> .gitignore
+    echo "wiki/.state.json" >> .gitignore
+    echo "wiki/.memory.log" >> .gitignore
+
+**Capture-only mode (v1.1.0):** transcripts saved automatically; you run `/wiki-ingest` when ready. Auto-ingest mode planned for v1.2 with proper safeguards (recursion guard + cost ceiling).
 
 ## Prerequisites
 
@@ -29,11 +60,11 @@ Plus a curated wiki schema with built-in protections against the regressions tha
 
     npx skills add Tedydev-web/llm-wiki-skills
 
-The CLI prompts you for scope (global vs project-local) and which skills to install. Pick **global** + **all 4 skills** for the standard setup.
+The CLI prompts you for scope (global vs project-local) and which skills to install. Pick **global** + **all 5 skills** for the standard setup (or skip `wiki-memory` if you don't need session capture).
 
 ### Advanced — non-interactive one-liner
 
-For multi-machine automation (skip all prompts, install all 4 skills globally):
+For multi-machine automation (skip all prompts, install all 5 skills globally):
 
     npx skills add Tedydev-web/llm-wiki-skills -g -y --all
 
@@ -42,7 +73,7 @@ Flags: `-g` = global scope, `-y` = skip confirmation prompts, `--all` = install 
 ### Update / Uninstall
 
     npx skills update -g
-    npx skills remove wiki wiki-ingest wiki-lint wiki-query -g -y
+    npx skills remove wiki wiki-ingest wiki-lint wiki-query wiki-memory -g -y
 
 ## Quick Start
 
@@ -63,15 +94,19 @@ Flags: `-g` = global scope, `-y` = skip confirmation prompts, `--all` = install 
     ├── docs/
     │   └── obsidian-setup.md        # READ THIS — Obsidian config + aliases requirement (§6b)
     ├── raw/                         # Inbox — drop sources here (immutable; LLM reads only)
-    │   └── assets/                  # Images and attachments
+    │   ├── assets/                  # Images and attachments
+    │   └── sessions/                # NEW v1.1: auto-captured session transcripts (only if /wiki-memory enabled)
     ├── wiki/                        # LLM workspace
     │   ├── sources/                 # One summary per ingested source
     │   ├── entities/                # People, orgs, products, tools (with aliases:)
     │   ├── concepts/                # Ideas, frameworks, theories (with aliases:)
     │   ├── synthesis/               # Comparisons, analyses, themes
+    │   ├── qa/                      # NEW v1.1: Q&A artifacts from /wiki-query --save
     │   ├── index.md                 # Master catalog
     │   ├── log.md                   # Append-only operation record
-    │   └── cache.md                 # Hot cache (~500 words, ingest+lint maintained)
+    │   ├── cache.md                 # Hot cache (~500 words, ingest+lint maintained)
+    │   ├── .state.json              # NEW v1.1: incremental ingest tracking (sha256-keyed)
+    │   └── .memory.log              # NEW v1.1: ops log (only if /wiki-memory enabled)
     ├── output/                      # Reports and generated artifacts
     └── CLAUDE.md                    # Agent config (varies — AGENTS.md / GEMINI.md / .cursor/rules/)
 
@@ -107,6 +142,20 @@ The wizard offers to install these. All optional but recommended:
 - **[summarize](https://github.com/steipete/summarize)** — summarize links, files, media from the CLI
 - **[qmd](https://github.com/tobi/qmd)** — local search engine for markdown (useful as the wiki grows)
 - **[agent-browser](https://github.com/vercel-labs/agent-browser)** — browser automation for web research
+
+## Migration from v1.0.0 vaults
+
+Backwards compatible — existing vaults work unchanged.
+
+**Step-by-step walkthrough:**
+
+    npx skills update -g           # pulls v1.1.0
+    /wiki                          # idempotent — picks up missing dirs only
+    /wiki-ingest                   # creates wiki/.state.json + sets _schema: 2
+    /wiki-lint                     # 16-step audit (vs 13 before)
+    # Optional: /wiki-memory enable
+
+Notes: the first `/wiki-ingest` after update treats all existing files as new (one-time cost) to build the SHA256 state index. State tracking is cumulative from then on.
 
 ## FAQ
 

@@ -159,6 +159,20 @@ These files are bundled with this skill and available at `<skill-directory>/refe
 - `agent-configs/cursor.md` — Cursor rules template
 - `agent-configs/gemini.md` — GEMINI.md template
 
+### Q11: Memory capture (optional add-on)
+
+Runs at the end of the wizard, after Steps 1–5. Pre-creates `raw/sessions/` and `wiki/qa/` dirs unconditionally (schema-ready even if user declines).
+
+Asks if user wants `wiki-memory` skill activated for session capture. Default is **N** (off). If yes, one follow-up:
+
+- **Q11a:** Scope — `global` (user-wide, stored in `~/.config/wiki-memory/vault-path`) or `project` (this vault only, stored in `<vault>/.claude/wiki-memory.conf`). Default: `global`.
+
+(Auto-compile mode deferred to v1.2 per red-team C-1.)
+
+After enable, prints privacy warning reminding user that transcripts contain full conversation history including any pasted secrets. Calls `enable-hooks.sh --scope <scope> --vault <vault>` from the `wiki-memory` skill.
+
+**Idempotent:** re-running the wizard when hooks are already active for the vault silently skips Q11. **Skill guard:** if `wiki-memory` skill is not installed, Q11 is skipped with an install hint. **Failure-safe:** if `enable-hooks.sh` exits non-zero, the wizard continues and prints a manual retry hint.
+
 ## Next Steps
 
 After setup is complete, the user's workflow is:

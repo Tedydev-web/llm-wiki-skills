@@ -151,8 +151,74 @@ check_tool "agent-browser" "agent-browser" "npm i -g agent-browser && agent-brow
 echo "" >&2
 echo "Onboarding complete." >&2
 
-# 8. Output JSON result to stdout
-VAULT_ABS=$(cd "$VAULT_ROOT" && pwd)
+# 8. Q11 — Optional: Session Memory Capture
+#    Pre-create schema dirs unconditionally (schema-ready even if user declines)
+VAULT_DIR="$(cd "$VAULT_ROOT" && pwd)"
+mkdir -p "$VAULT_DIR/raw/sessions" "$VAULT_DIR/wiki/qa"
+
+MEMORY_STATUS="skipped"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Idempotency: skip Q11 if hooks already active for this vault
+_SIDECAR_PATH="$HOME/.config/wiki-memory/vault-path"
+if [[ -f "$_SIDECAR_PATH" ]] && grep -qF "$VAULT_DIR" "$_SIDECAR_PATH" 2>/dev/null; then
+  echo "" >&2
+  echo "Memory capture already active for this vault. Skipping Q11." >&2
+  MEMORY_STATUS="already-active"
+# Skill-presence guard: Q11 requires wiki-memory skill installed
+elif [[ ! -d "$SKILL_DIR/wiki-memory" ]]; then
+  echo "" >&2
+  echo "NOTE: wiki-memory skill not found — skipping memory capture option." >&2
+  echo "      Install it later: npx skills add Tedydev-web/llm-wiki-skills" >&2
+  MEMORY_STATUS="skill-missing"
+else
+  # Q11 main — default OFF
+  echo "" >&2
+  echo "─── Optional: Session Memory Capture ───" >&2
+  echo "Save your Claude Code conversations as wiki sources?" >&2
+  echo "Useful for mining decisions and lessons later." >&2
+  echo "⚠️  Privacy: transcripts contain whatever you've pasted." >&2
+  read -r -p "Enable? [y/N, default N]: " enable_memory </dev/tty
+
+  if [[ "$enable_memory" =~ ^[Yy]$ ]]; then
+    # Q11a — scope
+    read -r -p "  Scope? [global/project] (default: global): " scope </dev/tty
+    scope="${scope:-global}"
+    if [[ ! "$scope" =~ ^(global|project)$ ]]; then
+      echo "  Invalid scope; defaulting to global." >&2
+      scope="global"
+    fi
+
+    # Invoke enable-hooks.sh — failure must NOT fail the wizard
+    if bash "$SKILL_DIR/wiki-memory/scripts/enable-hooks.sh" \
+        --scope "$scope" \
+        --vault "$VAULT_DIR"; then
+      MEMORY_STATUS="enabled-$scope"
+    else
+      echo "" >&2
+      echo "Memory hooks setup failed but wizard continues." >&2
+      echo "Run /wiki-memory enable later to retry." >&2
+      MEMORY_STATUS="hooks-failed"
+    fi
+
+    # Privacy reminder
+    cat >&2 <<'PRIVEOF'
+
+⚠️  Captured transcripts contain your full conversation, including any
+    secrets, API keys, or sensitive content you paste. Review before
+    committing the vault publicly. Recommend:
+        echo "raw/sessions/" >> .gitignore
+
+PRIVEOF
+    echo "Memory capture enabled. Toggle: /wiki-memory disable" >&2
+  else
+    echo "Skipped. You can enable later: /wiki-memory enable" >&2
+    MEMORY_STATUS="skipped"
+  fi
+fi
+
+# 9. Output JSON result to stdout
+VAULT_ABS="$VAULT_DIR"
 cat << JSONEOF
 {
   "status": "complete",
@@ -161,11 +227,13 @@ cat << JSONEOF
   "directories": [
     "raw/",
     "raw/assets/",
+    "raw/sessions/",
     "wiki/",
     "wiki/sources/",
     "wiki/entities/",
     "wiki/concepts/",
     "wiki/synthesis/",
+    "wiki/qa/",
     "output/",
     ".obsidian/",
     "docs/"
@@ -177,6 +245,7 @@ cat << JSONEOF
     ".obsidian/app.json",
     "docs/obsidian-setup.md"
   ],
-  "tools": $TOOLS_JSON
+  "tools": $TOOLS_JSON,
+  "memory_capture": "$MEMORY_STATUS"
 }
 JSONEOF

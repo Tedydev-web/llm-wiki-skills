@@ -1,0 +1,38 @@
+{
+  "_comment": "Hook entries for wiki-memory skill. Merged into settings.json by enable-hooks.sh. Remove entries via disable-hooks.sh.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $SKILL_DIR/scripts/hook-session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $SKILL_DIR/scripts/hook-pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $SKILL_DIR/scripts/hook-session-end.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
