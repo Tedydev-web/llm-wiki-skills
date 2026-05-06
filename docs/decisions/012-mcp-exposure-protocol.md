@@ -43,8 +43,9 @@ required per ADR 010). Each token is a random 32-byte URL-safe base64 string pre
 
 ```
 Stored in db.mcp_tokens row:
-  prefix_index: first 8 chars after "wkt_"  — plaintext, indexed, for O(1) prefix lookup
-  token_hash:   argon2id(fullToken, { memoryCost: 65536, timeCost: 3, parallelism: 1 })
+  prefix_lookup: HMAC-SHA256(fullToken, BETTER_AUTH_SECRET) truncated to 16 hex chars
+                 — indexed unique; NO plaintext bits leak to disk
+  token_hash:   argon2id(fullToken, { memoryCost: 65536, timeCost: 3, parallelism: 4 })
   workspace_id, granted_kb_ids, granted_page_types, expires_at, revoked_at
 ```
 
@@ -56,8 +57,8 @@ function verifyMcpToken(presented: string): McpAccessContext | null:
     argon2id.verify(DUMMY_HASH, presented)   // constant-time burn; prevent prefix oracle
     return null
 
-  prefix = presented.slice(4, 12)            // 8-char prefix after "wkt_"
-  row = db.mcpTokens.findByPrefixIndex(prefix)
+  lookup = HMAC-SHA256(presented, BETTER_AUTH_SECRET).slice(0, 16)
+  row = db.mcpTokens.findByPrefixLookup(lookup)
 
   if row is null:
     argon2id.verify(DUMMY_HASH, presented)   // constant-time burn; prevent existence oracle
@@ -144,7 +145,7 @@ The MCP server registers a system instructions string advising Claude:
 - **Plaintext token storage:** Upstream approach — single DB compromise exposes all tokens.
   Rejected in favour of argon2id at rest.
 - **JWT as MCP token:** JWTs are self-contained (no DB lookup), but revocation requires a
-  deny-list anyway. argon2id-hashed opaque token + prefix-index is simpler and fully revocable.
+  deny-list anyway. argon2id-hashed opaque token + HMAC prefix-lookup is simpler and fully revocable.
 - **12-tool surface (keep all):** Stub and internal-diagnostic tools add noise to Claude's
   tool selection. Consolidation improves LLM tool-use accuracy.
 

@@ -76,6 +76,7 @@ EXCLUDES=(
   -path "${REPO_ROOT}/plans" -prune -o
   -path "${REPO_ROOT}/node_modules" -prune -o
   -path "${REPO_ROOT}/.git" -prune -o
+  -path "${REPO_ROOT}/.docker" -prune -o
   -path "${REPO_ROOT}/LICENSE-NOTICE.md" -prune -o
   -path "${REPO_ROOT}/CHANGELOG.md" -prune -o
 )

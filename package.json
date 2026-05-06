@@ -11,6 +11,11 @@
     "team:dev": "bun run --cwd apps/wiki-team dev",
     "team:build": "bun run --cwd apps/wiki-team build",
     "schema:export": "bun run --cwd packages/wiki-schema export",
-    "test:wiki-team": "bash tests/wiki-team/integration/test-anti-trace.sh"
+    "test:wiki-team": "bash tests/wiki-team/integration/test-anti-trace.sh",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "bun run apps/wiki-team/storage/db-migrate-runner.ts",
+    "db:reset": "bun run apps/wiki-team/storage/db-migrate-runner.ts --reset",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down"
   }
 }

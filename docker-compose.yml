@@ -1,0 +1,61 @@
+# docker-compose.yml — local dev services for wiki-team v2.0
+#
+# Services: Postgres 16 + pgvector, Redis 7, MinIO (S3-compat object store)
+# wiki-team app NOT in compose — runs natively via `bun run team:dev` (P12 may add app service)
+#
+# Usage:
+#   bun run compose:up    → docker compose up -d
+#   bun run compose:down  → docker compose down
+#
+# Data volumes: .docker/pg-data, .docker/minio-data (gitignored — see .gitignore)
+# SECURITY: MINIO_ROOT_PASSWORD uses CHANGE_ME_BEFORE_BOOT placeholder.
+#   App boot will REJECT this literal value via assertEnv() — prevents accidental prod deploy.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: wiki-team-postgres
+    environment:
+      POSTGRES_DB: wiki_team_dev
+      POSTGRES_USER: wiki
+      POSTGRES_PASSWORD: devonly
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./.docker/pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wiki -d wiki_team_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: wiki-team-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: wiki-team-minio
+    command: server /data --console-address :9001
+    environment:
+      # SECURITY: replace CHANGE_ME_BEFORE_BOOT before any non-local deployment.
+      # The app's assertEnv() will crash at boot if these literal values are detected.
+      MINIO_ROOT_USER: wiki
+      MINIO_ROOT_PASSWORD: CHANGE_ME_BEFORE_BOOT
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./.docker/minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
