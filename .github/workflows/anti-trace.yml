@@ -1,0 +1,38 @@
+name: "Anti-trace audit — forbidden token scan"
+
+on:
+  pull_request:
+    paths:
+      - "apps/wiki-team/**"
+      - "packages/**"
+      - "tests/wiki-team/integration/test-anti-trace.sh"
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+
+concurrency:
+  group: anti-trace-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anti-trace:
+    name: "Forbidden token grep"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run anti-trace audit
+        run: bash tests/wiki-team/integration/test-anti-trace.sh
+
+      - name: Report result
+        if: failure()
+        run: |
+          echo "::error::Anti-trace audit FAILED. Forbidden tokens found in scaffold."
+          echo "::error::Check the output above for token locations."
+          echo "::error::Fix: remove or rename the offending tokens before merging."
+          exit 1

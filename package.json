@@ -5,13 +5,19 @@
   "type": "module",
   "workspaces": [
     "apps/*",
+    "apps/wiki-team/frontend-admin",
     "packages/*"
   ],
   "scripts": {
     "team:dev": "bun run --cwd apps/wiki-team dev",
     "team:build": "bun run --cwd apps/wiki-team build",
+    "admin:dev": "node --experimental-vm-modules node_modules/.bin/next dev --cwd apps/wiki-team/frontend-admin",
     "schema:export": "bun run --cwd packages/wiki-schema export",
-    "test:wiki-team": "bash tests/wiki-team/integration/test-anti-trace.sh",
+    "test:wiki-team": "vitest run",
+    "test:wiki-team:unit": "vitest run tests/wiki-team/unit",
+    "test:wiki-team:integration": "vitest run --config vitest.integration.config.ts",
+    "test:wiki-team:coverage": "vitest run --coverage",
+    "test:anti-trace": "bash tests/wiki-team/integration/test-anti-trace.sh",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "bun run apps/wiki-team/storage/db-migrate-runner.ts",
     "db:reset": "bun run apps/wiki-team/storage/db-migrate-runner.ts --reset",

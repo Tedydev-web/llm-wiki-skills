@@ -1,0 +1,23 @@
+{
+  "_comment": "Paste the 'wiki-team' entry into your existing claude_desktop_config.json under mcpServers.",
+  "_security": "NEVER commit this file with a real token. Use env-var indirection (see below).",
+  "mcpServers": {
+    "wiki-personal": {
+      "_comment": "Your existing v1.2 personal vault MCP entry — shown for context only.",
+      "command": "npx",
+      "args": ["-y", "Tedydev-web/llm-wiki-skills"],
+      "env": {
+        "WIKI_VAULT_PATH": "/Users/you/ObsidianVault"
+      }
+    },
+    "wiki-team": {
+      "_comment": "Add this entry. Replace placeholders with values from your team admin.",
+      "command": "npx",
+      "args": ["-y", "@wiki-team/mcp-server@latest"],
+      "env": {
+        "WIKI_TEAM_REMOTE_URL": "https://wiki.example.com",
+        "WIKI_TEAM_REMOTE_TOKEN": "wkt_replace_with_your_actual_token"
+      }
+    }
+  }
+}

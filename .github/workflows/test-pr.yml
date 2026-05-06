@@ -1,0 +1,40 @@
+name: "Test PR (L1-L4)"
+
+on:
+  pull_request:
+
+jobs:
+  test-l1-l4:
+    name: "L1-L4 (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get install -y jq
+            elif command -v brew >/dev/null 2>&1; then
+              brew install jq
+            fi
+          fi
+          jq --version
+
+      - name: Run L1-L4 test suite
+        run: bash tests/run-all-skills.sh
+
+      - name: Upload golden snapshots (first-run artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-snapshots-${{ matrix.os }}
+          path: tests/golden/
+          if-no-files-found: ignore
+          retention-days: 7
