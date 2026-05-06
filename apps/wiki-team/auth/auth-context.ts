@@ -25,6 +25,7 @@ import type { PermissionGrant } from '@wiki-team/schema';
 import type { AuthInstance } from './better-auth.js';
 import type { McpTokenDb } from './mcp-token-service.js';
 import { verifyMcpToken } from './mcp-token-service.js';
+import { loadPermissions, loadMembershipRole } from '../rbac/permission-loader.js';
 
 // ---------------------------------------------------------------------------
 // AuthContext — canonical identity bundle (phase-04 naming)
@@ -75,11 +76,33 @@ export function authContextMiddleware(
     if (authHeader?.startsWith('Bearer wkt_')) {
       const token = authHeader.slice('Bearer '.length);
       try {
-        resolved = await verifyMcpToken(token, db);
+        const mcpCtx = await verifyMcpToken(token, db);
+        if (mcpCtx !== null) {
+          // P05: populate permissions + upgrade membershipTier via DB loaders.
+          // verifyMcpToken builds a partial context from token.scopes; loaders add
+          // the full role-based permission union from role_definitions table.
+          const [fullPermissions, membershipRole] = await Promise.all([
+            loadPermissions(mcpCtx.userId),
+            mcpCtx.workspaceId !== null
+              ? loadMembershipRole(mcpCtx.userId, mcpCtx.workspaceId)
+              : Promise.resolve(null),
+          ]);
+
+          // Merge: token scopes union with role-derived permissions
+          // Token scopes are already validated PermissionGrants; union with role grants
+          const mergedPermissions = mergePermissions(mcpCtx.permissions, fullPermissions);
+
+          resolved = {
+            ...mcpCtx,
+            permissions: mergedPermissions,
+            // Upgrade membershipTier if DB lookup found a higher tier than token-derived
+            membershipTier: membershipRole ?? mcpCtx.membershipTier,
+          };
+        }
       } catch (err) {
-        // verifyMcpToken only throws on internal errors (e.g. BETTER_AUTH_SECRET missing)
+        // verifyMcpToken or loader throws on internal errors (e.g. BETTER_AUTH_SECRET missing)
         // Treat as unauthenticated; log error for ops visibility
-        console.error('[auth] verifyMcpToken error:', err instanceof Error ? err.message : err);
+        console.error('[auth] Bearer path error:', err instanceof Error ? err.message : err);
         resolved = null;
       }
     }
@@ -89,11 +112,17 @@ export function authContextMiddleware(
       try {
         const session = await auth.api.getSession({ headers: c.req.raw.headers });
         if (session?.user?.id) {
-          resolved = buildSessionAuthContext(session);
+          const partial = buildSessionAuthContext(session);
+
+          // P05: populate permissions + membershipTier for session users.
+          // workspaceId is resolved per-request from route params (injected by P08);
+          // at middleware level we load the global permission union only.
+          const permissions = await loadPermissions(partial.userId);
+          resolved = { ...partial, permissions };
         }
       } catch (err) {
-        // Session lookup failure is non-fatal — treat as unauthenticated
-        console.error('[auth] session lookup error:', err instanceof Error ? err.message : err);
+        // Session lookup or loader failure is non-fatal — treat as unauthenticated
+        console.error('[auth] session path error:', err instanceof Error ? err.message : err);
         resolved = null;
       }
     }
@@ -147,4 +176,26 @@ export function requireAuth(c: Context<AuthContextEnv>): AuthContext {
     });
   }
   return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// Internal: merge two PermissionGrant arrays, deduplicating by resource.verb.scope
+
+/**
+ * Union two PermissionGrant arrays without duplicates.
+ * Key: "<resource>.<verb>.<scope>" string — matches the canonical permission format.
+ */
+function mergePermissions(a: PermissionGrant[], b: PermissionGrant[]): PermissionGrant[] {
+  const seen = new Set<string>();
+  const result: PermissionGrant[] = [];
+
+  for (const grant of [...a, ...b]) {
+    const key = `${grant.resource}.${grant.verb}.${grant.scope}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(grant);
+    }
+  }
+
+  return result;
 }
