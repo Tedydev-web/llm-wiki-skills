@@ -1,0 +1,7 @@
+{
+  "name": "@wiki-team/server",
+  "private": true,
+  "version": "2.0.0-alpha.0",
+  "type": "module",
+  "description": "Team-mode wiki server (multi-user, MCP-native)"
+}

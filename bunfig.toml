@@ -1,0 +1,10 @@
+# Bun runtime config for llm-wiki-skills monorepo
+# https://bun.sh/docs/runtime/bunfig
+
+[install]
+# Use default registry
+registry = "https://registry.npmjs.org"
+
+[install.cache]
+# Enable caching for faster installs
+disable = false

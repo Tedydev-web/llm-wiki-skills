@@ -1,0 +1,16 @@
+{
+  "name": "llm-wiki-skills-monorepo",
+  "private": true,
+  "version": "2.0.0-alpha.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "team:dev": "bun run --cwd apps/wiki-team dev",
+    "team:build": "bun run --cwd apps/wiki-team build",
+    "schema:export": "bun run --cwd packages/wiki-schema export",
+    "test:wiki-team": "bash tests/wiki-team/integration/test-anti-trace.sh"
+  }
+}

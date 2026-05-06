@@ -1,0 +1,7 @@
+{
+  "name": "wiki-skills-personal",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "description": "v1.2 personal-mode LLM Wiki skills (Obsidian-based knowledge management)"
+}

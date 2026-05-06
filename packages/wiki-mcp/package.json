@@ -1,0 +1,7 @@
+{
+  "name": "@wiki-team/mcp",
+  "private": true,
+  "version": "2.0.0-alpha.0",
+  "type": "module",
+  "description": "MCP integration layer for wiki-team (Model Context Protocol server/client)"
+}
