@@ -88,12 +88,27 @@ export async function handleStreamableHttpRequest(
     // Connect transport to server (idempotent — SDK manages lifecycle)
     await server.connect(transport);
 
-    // Feed the parsed body into the transport and collect the response
-    const result = await transport.handleRequest(
-      // Pass headers as a plain Record for the transport's use
-      Object.fromEntries(req.headers.entries()),
-      body,
-    );
+    // Feed the parsed body into the transport and collect the response.
+    // The SDK's `handleRequest` is typed for Node http.IncomingMessage + ServerResponse;
+    // on Bun we duck-type minimal shims since the transport only reads .headers and
+    // writes via .write/.end. Cast through unknown to bypass strict signature check.
+    // (Tracking: v2.1 may need a Bun-native adapter when SDK tightens types.)
+    const reqShim = { headers: Object.fromEntries(req.headers.entries()) };
+    const resShim = {
+      writeHead: () => resShim,
+      write: (chunk: unknown) => {
+        responseChunks.push(typeof chunk === 'string' ? chunk : String(chunk));
+        return true;
+      },
+      end: (chunk?: unknown) => {
+        if (chunk !== undefined && chunk !== null) {
+          responseChunks.push(typeof chunk === 'string' ? chunk : String(chunk));
+        }
+      },
+      setHeader: () => undefined,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (transport.handleRequest as any)(reqShim, resShim, body);
 
     if (result !== undefined && result !== null) {
       responseChunks.push(

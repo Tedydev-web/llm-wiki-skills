@@ -10,10 +10,10 @@
 
 import { z } from 'zod';
 import { sql, and, eq, isNull } from 'drizzle-orm';
-import { evaluatePolicy } from '../../rbac/index.js';
-import type { AuthContext } from '../../auth/auth-context.js';
-import { getDb, schema } from '../../storage/db.js';
-import { embed } from '../../storage/embedding.js';
+import { evaluatePolicy } from '../../../rbac/index.js';
+import type { AuthContext } from '../../../auth/auth-context.js';
+import { getDb, schema } from '../../../storage/db.js';
+import { embed } from '../../../storage/embedding.js';
 
 // ---------------------------------------------------------------------------
 // Constants — own values per phase-06 spec

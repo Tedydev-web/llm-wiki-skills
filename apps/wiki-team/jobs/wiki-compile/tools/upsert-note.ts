@@ -14,11 +14,11 @@
 
 import { z } from 'zod';
 import { and, eq, isNull } from 'drizzle-orm';
-import { evaluatePolicy } from '../../rbac/index.js';
-import type { AuthContext } from '../../auth/auth-context.js';
-import { getDb, schema } from '../../storage/db.js';
+import { evaluatePolicy } from '../../../rbac/index.js';
+import type { AuthContext } from '../../../auth/auth-context.js';
+import { getDb, schema } from '../../../storage/db.js';
 import { validateSlug, isSentinel } from '../slug-rules.js';
-import { embed } from '../../storage/embedding.js';
+import { embed } from '../../../storage/embedding.js';
 import { pageTaxonomySchema } from '@wiki-team/schema';
 
 // ---------------------------------------------------------------------------
@@ -78,8 +78,8 @@ export async function handleUpsertNote(
     );
   }
 
-  // Compute embedding for semantic search
-  const embeddingVector = await embed(`${input.title}\n${input.content}`);
+  // Compute embedding for semantic search — convert Float32Array → number[] for Drizzle vector column
+  const embeddingVector = Array.from(await embed(`${input.title}\n${input.content}`));
 
   const db = getDb();
 

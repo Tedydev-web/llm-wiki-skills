@@ -9,9 +9,9 @@
 
 import { z } from 'zod';
 import { and, eq, isNull } from 'drizzle-orm';
-import { evaluatePolicy } from '../../rbac/index.js';
-import type { AuthContext } from '../../auth/auth-context.js';
-import { getDb, schema } from '../../storage/db.js';
+import { evaluatePolicy } from '../../../rbac/index.js';
+import type { AuthContext } from '../../../auth/auth-context.js';
+import { getDb, schema } from '../../../storage/db.js';
 import { validateSlug } from '../slug-rules.js';
 
 // ---------------------------------------------------------------------------

@@ -64,10 +64,11 @@ async function noteCrossrefsHandler(
 
   if (!sourceNote) {
     const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js');
-    throw new McpError(ErrorCode.InvalidRequest, 'PAGE_NOT_FOUND');
+    throw new McpError(ErrorCode.InvalidRequest, 'NOTE_NOT_FOUND');
   }
 
-  const outboundSlugs: string[] = sourceNote.links ?? [];
+  // Drizzle types `links` (jsonb) as unknown; we ship string[] per schema invariant.
+  const outboundSlugs = (sourceNote.links as string[] | null) ?? [];
 
   if (outboundSlugs.length === 0) {
     return NoteCrossrefsOutputSchema.parse({

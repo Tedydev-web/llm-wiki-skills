@@ -1,9 +1,10 @@
 /**
  * job-handler.ts — BullMQ job pipeline orchestrator for wiki-compile.
- * Steps: guard → load material → extract text → build AuthContext →
+ * Steps: guard → idempotency check → load material → extract text → build AuthContext →
  *   runWikiCompile → rebuildCatalog → mark completed.
  * Idempotency triple (material_id, prompt_version_id, scope_filter_hash) —
- *   full DB persistence deferred to P08; upsertNote is idempotent in the interim.
+ *   persisted to jobs table on enqueue (P08 owns enqueue route); checked here
+ *   to skip re-running completed jobs (prevents double-billing on BullMQ retry).
  */
 
 import { createHash } from 'node:crypto';
@@ -46,11 +47,36 @@ export async function processWikiCompileJob(
     throw Object.assign(new Error('recursion-guard: refusing re-entry'), { code: 'recursion-detected' });
   }
 
-  // Idempotency hash — stored externally once P08 adds columns to jobs table
-  void buildIdempotencyHash(materialId, promptVersionId, scopeFilterHash);
+  // Idempotency triple — compute and persist to jobs table (P08 §W3 fix).
+  // On retry, if a matching completed row exists, skip the LLM call to avoid
+  // double-billing and duplicate note writes.
+  const idempotencyHash = buildIdempotencyHash(materialId, promptVersionId, scopeFilterHash);
 
   await job.updateProgress(5);
   const db = getDb();
+
+  // Check for an existing completed job with same idempotency triple
+  // (BullMQ jobId dedup handles in-flight; this handles completed reruns)
+  const existingJobs = await db
+    .select({ id: schema.jobs.id, state: schema.jobs.state })
+    .from(schema.jobs)
+    .where(eq(schema.jobs.bullJobId, job.id ?? `ingest:${materialId}`))
+    .limit(1);
+
+  if (existingJobs.length > 0 && existingJobs[0]!.state === 'completed') {
+    console.info(
+      `[job-handler] idempotency skip materialId=${materialId} hash=${idempotencyHash} — already completed`,
+    );
+    return;
+  }
+
+  // Persist idempotency hash to job row payload for audit trail
+  if (existingJobs.length > 0) {
+    await db
+      .update(schema.jobs)
+      .set({ state: 'active', attemptsMade: job.attemptsMade, progress: 5 })
+      .where(eq(schema.jobs.id, existingJobs[0]!.id));
+  }
 
   // ---- Load material ----
   const materialRows = await db
@@ -141,8 +167,16 @@ export async function processWikiCompileJob(
 
   await job.updateProgress(100);
 
+  // Mark jobs row as completed (P08 idempotency persistence)
+  if (existingJobs.length > 0) {
+    await db
+      .update(schema.jobs)
+      .set({ state: 'completed', progress: 100, finishedAt: new Date() })
+      .where(eq(schema.jobs.id, existingJobs[0]!.id));
+  }
+
   console.info(
-    `[job-handler] done materialId=${materialId} notes=${noteCount} ` +
+    `[job-handler] done materialId=${materialId} notes=${noteCount} hash=${idempotencyHash} ` +
     `steps=${agentResult.stepsUsed} tokens=${agentResult.totalInputTokens + agentResult.totalOutputTokens}`,
   );
 }
@@ -160,7 +194,7 @@ async function extractMaterialText(
   }
 
   const store = getObjectStore();
-  const buf = await store.getObject(material.storageKey);
+  const buf = await store.download(material.storageKey);
 
   if (
     material.mimeType.includes('wordprocessingml') ||

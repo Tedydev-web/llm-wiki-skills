@@ -9,7 +9,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages.js';
-import type { AuthContext } from '../auth/auth-context.js';
+import type { AuthContext } from '../../auth/auth-context.js';
 import type { CostMeter } from './cost-meter.js';
 import { loadSystemPrompt } from './prompts/prompt-loader.js';
 import { TOOL_DEFINITIONS } from './tool-definitions.js';

@@ -34,7 +34,10 @@ import {
 } from '@wiki-team/mcp/transports/sse';
 import type { McpTokenDb } from '../auth/mcp-token-service.js';
 import { verifyMcpToken } from '../auth/mcp-token-service.js';
-import { getDb } from '../storage/db.js';
+import type { McpTokenDb as McpTokenDbForMcp, VerifyMcpTokenFn } from '@wiki-team/mcp';
+import { getDb, schema } from '../storage/db.js';
+import { eq } from 'drizzle-orm';
+import type { PermissionGrant } from '@wiki-team/schema';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -75,40 +78,84 @@ const SYSTEM_INSTRUCTIONS = readFileSync(
 
 /**
  * Build a McpTokenDb adapter from the Drizzle instance.
- * Kept inline in server.ts — avoids coupling mcp-host to P03 internals.
- * P08 will extract this to a shared storage adapter when it lands.
+ * P08 wired: real Drizzle-backed adapter querying mcp_tokens table
+ * via prefix_lookup unique index (ADR 012 §Verification flow).
  */
 function buildMcpTokenDb(): McpTokenDb {
   const db = getDb();
-  const { schema } = db as unknown as { schema: Record<string, unknown> };
 
-  // Minimal adapter — delegates to Drizzle queries. Full implementation
-  // depends on P03's generated schema; these are typed against McpTokenDb interface.
   return {
     async insertMcpToken(row) {
-      // P03 will own the actual drizzle table — placeholder implementation
-      void db; void row; void schema;
-      throw new Error('insertMcpToken: not implemented in mcp-host (use P08 HTTP API)');
+      // Token issuance is handled exclusively by P08 HTTP API (POST /api/me/tokens).
+      // MCP host never issues tokens — only verifies them.
+      void row;
+      throw new Error('insertMcpToken: token issuance must go through POST /api/me/tokens');
     },
+
     async findMcpTokenByPrefixLookup(prefixLookup) {
-      // This is the hot path — P03 must provide mcpTokens table
-      // Placeholder: returns null (auth will fail → appropriate for pre-P03 dev)
-      void prefixLookup;
-      return null;
+      // Hot path: HMAC prefix lookup → O(1) unique index scan (ADR 012)
+      const [row] = await db
+        .select()
+        .from(schema.mcpTokens)
+        .where(eq(schema.mcpTokens.prefixLookup, prefixLookup))
+        .limit(1);
+
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        prefixLookup: row.prefixLookup,
+        tokenHash: row.tokenHash,
+        userId: row.userId,
+        workspaceId: row.workspaceId ?? null,
+        scopes: (row.scopes as PermissionGrant[]) ?? [],
+        expiresAt: row.expiresAt ?? null,
+        revokedAt: row.revokedAt ?? null,
+        createdAt: row.createdAt,
+      };
     },
+
     async findMcpTokenById(id) {
-      void id;
-      return null;
+      const [row] = await db
+        .select()
+        .from(schema.mcpTokens)
+        .where(eq(schema.mcpTokens.id, id))
+        .limit(1);
+
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        prefixLookup: row.prefixLookup,
+        tokenHash: row.tokenHash,
+        userId: row.userId,
+        workspaceId: row.workspaceId ?? null,
+        scopes: (row.scopes as PermissionGrant[]) ?? [],
+        expiresAt: row.expiresAt ?? null,
+        revokedAt: row.revokedAt ?? null,
+        createdAt: row.createdAt,
+      };
     },
+
     async revokeMcpTokenById(id) {
-      void id;
+      await db
+        .update(schema.mcpTokens)
+        .set({ revokedAt: new Date() })
+        .where(eq(schema.mcpTokens.id, id));
     },
+
     async revokeAllMcpTokensByUserId(userId) {
-      void userId;
-      return 0;
+      const rows = await db
+        .update(schema.mcpTokens)
+        .set({ revokedAt: new Date() })
+        .where(eq(schema.mcpTokens.userId, userId))
+        .returning({ id: schema.mcpTokens.id });
+      return rows.length;
     },
-    async countMcpTokensIssuedToday(userId, dateKey) {
-      void userId; void dateKey;
+
+    async countMcpTokensIssuedToday(_userId, _dateKey) {
+      // Rate limiting enforced via Redis INCR in mcp-token-service.ts;
+      // DB count is fallback only (not called in hot path).
       return 0;
     },
   };
@@ -154,7 +201,8 @@ function createMcpServer(db: McpTokenDb) {
   });
 
   // CallTool handler — auth + dispatch to per-tool builder
-  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic dispatch; actual return shape matches SDK's ServerResult via tool builders
+  server.setRequestHandler(CallToolRequestSchema, async (req): Promise<any> => {
     const { name, arguments: args } = req.params;
 
     // Auth: extract Bearer token from meta (SDK passes request headers via meta)
@@ -164,7 +212,14 @@ function createMcpServer(db: McpTokenDb) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (req as any)._meta?.authorization as string | undefined;
 
-    const ctx = await loadAuthContextFromBearer(authHeader ?? null, db, verifyMcpToken);
+    // Cast: auth's McpTokenDb (no index sig) → mcp package's McpTokenDb (has index sig).
+    // Cast: verifyMcpToken takes auth's McpTokenDb; VerifyMcpTokenFn takes mcp's McpTokenDb.
+    // Both interfaces are structurally compatible at runtime — cast bridges the nominal gap.
+    const ctx = await loadAuthContextFromBearer(
+      authHeader ?? null,
+      db as unknown as McpTokenDbForMcp,
+      verifyMcpToken as unknown as VerifyMcpTokenFn,
+    );
 
     // Dispatch to the correct tool builder + handler
     const tool = buildTool(name, ctx);
@@ -217,17 +272,19 @@ const TOOL_SCHEMAS: Record<string, object> = {
   'note.crossrefs': { type: 'object', properties: { slug: { type: 'string' }, workspaceId: { type: 'string' } }, required: ['slug', 'workspaceId'] },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic dispatch over 8 tools
-function buildTool(name: string, ctx: any): ReturnType<typeof buildWikiSearchTool> | null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic dispatch over 8 tools with heterogeneous Zod schemas; ToolDefinition's ZodObject generic is invariant
+function buildTool(name: string, ctx: any): { mcpHandler: (args: unknown) => Promise<unknown> } | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AnyTool = { mcpHandler: (args: unknown) => Promise<any> };
   switch (name) {
-    case 'wiki.search':    return buildWikiSearchTool(ctx);
-    case 'wiki.fetch':     return buildWikiFetchTool(ctx);
-    case 'wiki.catalog':   return buildWikiCatalogTool(ctx);
-    case 'wiki.recent':    return buildWikiRecentTool(ctx);
-    case 'material.read':  return buildMaterialReadTool(ctx);
-    case 'directory.lookup': return buildDirectoryLookupTool(ctx);
-    case 'workspace.info': return buildWorkspaceInfoTool(ctx);
-    case 'note.crossrefs': return buildNoteCrossrefsTool(ctx);
+    case 'wiki.search':    return buildWikiSearchTool(ctx) as AnyTool;
+    case 'wiki.fetch':     return buildWikiFetchTool(ctx) as AnyTool;
+    case 'wiki.catalog':   return buildWikiCatalogTool(ctx) as AnyTool;
+    case 'wiki.recent':    return buildWikiRecentTool(ctx) as AnyTool;
+    case 'material.read':  return buildMaterialReadTool(ctx) as AnyTool;
+    case 'directory.lookup': return buildDirectoryLookupTool(ctx) as AnyTool;
+    case 'workspace.info': return buildWorkspaceInfoTool(ctx) as AnyTool;
+    case 'note.crossrefs': return buildNoteCrossrefsTool(ctx) as AnyTool;
     default:               return null;
   }
 }

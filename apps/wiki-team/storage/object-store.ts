@@ -182,6 +182,50 @@ export class ObjectStore {
 }
 
 // ---------------------------------------------------------------------------
+// sanitizeObjectKey — safe MinIO/S3 key construction (phase-08 §Security)
+
+/**
+ * Sanitize a user-supplied filename for use as an object storage key segment.
+ *
+ * Rules (in order):
+ *   1. NFC-normalize unicode
+ *   2. Reject null bytes → throws 'null_byte_in_key'
+ *   3. Reject path traversal (..) or leading slash → throws 'path_traversal'
+ *   4. Replace [^a-zA-Z0-9._-] with underscore
+ *   5. Truncate to 200 chars
+ *   6. Reject empty result → throws 'empty_key'
+ *
+ * @throws Error with code 'null_byte_in_key' | 'path_traversal' | 'empty_key'
+ */
+export function sanitizeObjectKey(input: string): string {
+  // 1. NFC-normalize unicode (canonical decomposition + composition)
+  let s = input.normalize('NFC');
+
+  // 2. Reject null bytes
+  if (s.includes('\0')) {
+    throw Object.assign(new Error('null_byte_in_key'), { code: 'null_byte_in_key' });
+  }
+
+  // 3. Reject path traversal attempts
+  if (s.includes('..') || s.startsWith('/')) {
+    throw Object.assign(new Error('path_traversal'), { code: 'path_traversal' });
+  }
+
+  // 4. Replace any character not in [a-zA-Z0-9._-] with underscore
+  s = s.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  // 5. Truncate to max 200 chars
+  if (s.length > 200) s = s.slice(0, 200);
+
+  // 6. Reject empty result (input was all non-safe chars)
+  if (s.length === 0) {
+    throw Object.assign(new Error('empty_key'), { code: 'empty_key' });
+  }
+
+  return s;
+}
+
+// ---------------------------------------------------------------------------
 // Singleton export
 
 let _store: ObjectStore | null = null;

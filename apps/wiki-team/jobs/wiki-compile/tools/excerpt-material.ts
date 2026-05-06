@@ -17,8 +17,8 @@
  */
 
 import { z } from 'zod';
-import { evaluatePolicy } from '../../rbac/index.js';
-import type { AuthContext } from '../../auth/auth-context.js';
+import { evaluatePolicy } from '../../../rbac/index.js';
+import type { AuthContext } from '../../../auth/auth-context.js';
 
 // ---------------------------------------------------------------------------
 // Constants — own values per phase-06 spec
