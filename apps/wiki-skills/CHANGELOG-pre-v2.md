@@ -1,6 +1,8 @@
-# Changelog
+# Changelog — pre-v2 (frozen historical snapshot)
 
-All notable changes to LLM Wiki.
+> v2.0.0+ changes: see repo root [CHANGELOG.md](../../CHANGELOG.md)
+
+All notable changes to LLM Wiki personal mode (v1.2 and earlier, MIT).
 
 ## [1.2.0] — 2026-05-05
 

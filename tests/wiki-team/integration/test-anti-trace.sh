@@ -79,6 +79,8 @@ EXCLUDES=(
   -path "${REPO_ROOT}/.docker" -prune -o
   -path "${REPO_ROOT}/LICENSE-NOTICE.md" -prune -o
   -path "${REPO_ROOT}/CHANGELOG.md" -prune -o
+  -path "${REPO_ROOT}/README.md" -prune -o
+  -path "${REPO_ROOT}/docs/journals" -prune -o
 )
 
 # Build a temp file listing all scannable paths (bash 3.2 compatible, no mapfile)
