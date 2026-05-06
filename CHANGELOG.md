@@ -15,6 +15,27 @@ For v1.2 personal-mode history (frozen), see [`apps/wiki-skills/CHANGELOG-pre-v2
 
 ---
 
+## [2.0.1] — 2026-05-06
+
+**Patch release** addressing top-3 HIGH tech-debt items from the v2.0.0 release audit (`plans/reports/tech-debt-audit-260506-1646-v2-0-release.md`).
+
+### Fixed
+
+- **`material.read` MCP tool**: previously returned an empty excerpt despite being advertised as functional. Now reads raw bytes from MinIO via `storage_key` and extracts text per MIME type:
+  - `text/plain`, `text/markdown` → UTF-8 decode
+  - `application/pdf` → `@wiki-team/pdf-extract` (mupdf, AGPL boundary)
+  - `text/html` → lightweight tag-strip + entity decode
+  - other (DOCX, etc.) → `MIME_NOT_SUPPORTED` with pointer to `wiki.search`/`wiki.fetch`
+- **wiki.recent performance**: added composite index `notes_workspace_updated_idx ON notes(workspace_id, updated_at DESC)` (migration 0004) so the per-workspace recency feed stays cheap as note count grows. Single-column `workspace_id` index alone forced an in-memory sort.
+
+### Notes
+
+- Migration 0004 is additive and reversible (`0004-perf-indexes.down.sql`); no data touched.
+- Stale SQL comment in `drizzle/0003-init-rbac-jobs.up.sql:7` ("first 8 chars") was already corrected during W1 review (HMAC-SHA256 truncated 16 hex). Audit flagged it as residual; verified resolved.
+- Remaining v2.1 backlog (29 items) tracked in tech-debt audit report; items are operational/observability/migration tooling, not correctness.
+
+---
+
 ## [2.0.0] — 2026-05-06
 
 **Two-product monorepo release.** Ships `apps/wiki-team/` (TS+Bun team wiki with RBAC + MCP) alongside frozen `apps/wiki-skills/` (v1.2 personal mode, MIT). Monorepo managed by Bun workspaces. 13 phases (P00–P12), ~409 files, ~21k LoC net additions.

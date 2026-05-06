@@ -226,6 +226,9 @@ export const notes = pgTable(
     workspaceIdIdx:      index('notes_workspace_id_idx').on(t.workspaceId),
     kbIdIdx:             index('notes_kb_id_idx').on(t.kbId),
     taxonomyIdx:         index('notes_taxonomy_idx').on(t.taxonomy),
+    // wiki.recent ORDER BY updated_at — composite index keeps the per-workspace
+    // recency feed cheap as note count grows (added in migration 0004 / v2.0.1).
+    workspaceUpdatedIdx: index('notes_workspace_updated_idx').on(t.workspaceId, t.updatedAt),
     // Vector index (IVFFlat) created separately in migration 0002 via raw SQL
     // as Drizzle does not support pgvector index types natively.
   }),

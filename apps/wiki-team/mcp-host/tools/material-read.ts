@@ -11,6 +11,8 @@ import { defineTool } from '@wiki-team/mcp/define-tool';
 import { evaluatePolicy, compileScopeFilter } from '../../rbac/index.js';
 import { throwIfDenied, wrapToolError } from '@wiki-team/mcp/error-mapper';
 import { getDb, schema } from '../../storage/db.js';
+import { getObjectStore } from '../../storage/object-store.js';
+import { extractPdfText } from '@wiki-team/pdf-extract';
 import { and, eq } from 'drizzle-orm';
 import type { AuthContext } from '../../auth/auth-context.js';
 
@@ -70,15 +72,45 @@ async function materialReadHandler(
     );
   }
 
-  // v2.0 LIMITATION: material excerpt requires reading raw bytes from MinIO
-  // (storage_key) and re-extracting via @wiki-team/pdf-extract / mammoth.
-  // That path is wired in P08 (HTTP API exposes the same flow). Returning the
-  // material metadata + an empty excerpt for now; clients should call
-  // wiki.search / wiki.fetch on notes compiled from this material instead.
-  // DO NOT join notes by kb_id — that returns unrelated notes in the same KB.
-  // Tracking: P08 follow-up item.
-  const excerpt = '';
-  const truncated = false;
+  // v2.0.1: read raw bytes from MinIO and extract text per mime type.
+  // - text/plain, text/markdown: decode UTF-8 directly
+  // - application/pdf: @wiki-team/pdf-extract (mupdf-bound, AGPL boundary)
+  // - text/html: simple strip (HTML preserved as-is for now; full readability
+  //   is in jobs/wiki-compile/extractors/url-extractor.ts but that path
+  //   pulls jsdom + readability which is heavy for an MCP tool call)
+  // - other (DOCX, etc.): MIME_NOT_SUPPORTED — caller should use wiki.search
+  //   on notes compiled from the material instead
+  const store = getObjectStore();
+  const buf = await store.download(row.storageKey);
+  let fullText: string;
+  if (row.mimeType === 'text/plain' || row.mimeType === 'text/markdown') {
+    fullText = buf.toString('utf-8');
+  } else if (row.mimeType === 'application/pdf') {
+    fullText = await extractPdfText(buf);
+  } else if (row.mimeType === 'text/html') {
+    // Lightweight HTML strip: remove tags + decode common entities.
+    // Full extraction (readability) belongs in the compile worker, not here.
+    fullText = buf
+      .toString('utf-8')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } else {
+    const { McpError, ErrorCode } = await import('@modelcontextprotocol/sdk/types.js');
+    throw new McpError(
+      ErrorCode.InvalidRequest,
+      `MIME_NOT_SUPPORTED: material.read v2.0 supports text/plain, text/markdown, application/pdf, text/html. ` +
+      `Got "${row.mimeType}". Use wiki.search/wiki.fetch on notes compiled from this material instead.`,
+    );
+  }
+  const excerpt = fullText.slice(0, input.maxChars);
+  const truncated = fullText.length > input.maxChars;
 
   return MaterialReadOutputSchema.parse({
     id: row.id,
