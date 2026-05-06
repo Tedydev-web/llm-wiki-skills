@@ -4,15 +4,27 @@
   "version": "2.0.0-alpha.0",
   "type": "module",
   "description": "Team-mode wiki server (multi-user, MCP-native)",
+  "scripts": {
+    "mcp:dev": "bun run --watch mcp-host/server.ts"
+  },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@wiki-team/mcp": "*",
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@google/generative-ai": "^0.15.0",
+    "@mozilla/readability": "^0.5.0",
     "@node-rs/argon2": "^2.0.0",
     "@wiki-team/schema": "*",
+    "@wiki-team/pdf-extract": "*",
     "better-auth": "^1.2.7",
+    "bullmq": "^5.0.0",
     "drizzle-orm": "^0.32.0",
     "hono": "^4.7.7",
+    "ioredis": "^5.4.0",
+    "jsdom": "^26.0.0",
+    "mammoth": "^1.8.0",
     "postgres": "^3.4.4"
   },
   "devDependencies": {

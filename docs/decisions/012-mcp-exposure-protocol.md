@@ -84,14 +84,19 @@ Source-mapping table — concept-level; no upstream tool names used:
 
 | v2 tool | Consolidates / replaces | Rationale |
 |---|---|---|
-| `wiki.search` | semantic search tool + keyword search tool | Unified query: auto-selects vector or keyword path based on query length; reduces client decision burden |
-| `wiki.fetch` | single-page fetch tool + page-metadata tool | Metadata (slug, version, tags) returned inline with content; one round-trip |
-| `wiki.graph` | neighbourhood/graph-relations tool | Unchanged concept; returns linked pages as adjacency list |
-| `wiki.index` | index-listing tool | Returns paginated slug list for a workspace; scoped by `McpAccessContext` |
-| `source.list` | source-listing tool + knowledge-type-listing tool | Knowledge types returned as a field on each source; removes a standalone tool |
-| `source.fetch` | source-content tool | Returns raw extracted text + outline for a source; used for deep citation |
-| `people.lookup` | directory/employee-lookup tool | People + department lookup for cross-referencing authorship |
-| `tenant.context` | system-info tool + provider-status tool | Server capabilities + active AI provider info; useful for Claude to calibrate responses |
+| `wiki.search` | semantic search + keyword search | Unified query; auto-selects vector or keyword path |
+| `wiki.fetch` | single-note fetch + metadata | Metadata returned inline; one round-trip |
+| `wiki.catalog` | index-listing | Paginated note list for a workspace; scoped by `AuthContext` |
+| `wiki.recent` | recent-activity feed | Recently updated notes (replaces source-listing — more useful for AI clients) |
+| `material.read` | source/material content fetch | Raw extracted text + outline; used for deep citation |
+| `directory.lookup` | user directory | People search workspace-scoped; admin-tier required for email field |
+| `workspace.info` | system + workspace metadata | Server capabilities + workspace settings + feature flags |
+| `note.crossrefs` | graph/links | Outbound cross-references for a note |
+
+**Vocabulary alignment with ADR 010:** material (not source), workspace (not tenant),
+directory (not people/employees), note (not page) — keeps terminology coherent across
+schemas, RBAC, and MCP tool surface. Reconciled in P07 implementation; this ADR
+amended to match (2026-05-06 amendment).
 
 **Dropped from upstream 12:** one placeholder/stub tool (no-op) and one internal-only
 diagnostic tool — neither provided value to external MCP clients.
@@ -100,23 +105,23 @@ diagnostic tool — neither provided value to external MCP clients.
 
 | Tool | Key inputs | Key outputs | Errors |
 |---|---|---|---|
-| `wiki.search` | `query:string`, `workspaceId:uuid`, `topK:int(1-20)=5`, `mode:auto\|semantic\|keyword` | `pages[]{slug,title,excerpt,score}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED`, `EMBEDDING_UNAVAILABLE` |
-| `wiki.fetch` | `slug:string`, `workspaceId:uuid`, `version?:int` | `{slug,title,content,version,tags[],links[]}` | `PAGE_NOT_FOUND`, `SCOPE_DENIED`, `VERSION_NOT_FOUND` |
-| `wiki.graph` | `slug:string`, `workspaceId:uuid`, `depth:int(1-3)=1` | `{nodes[]{slug,title}, edges[]{from,to}}` | `PAGE_NOT_FOUND`, `SCOPE_DENIED` |
-| `wiki.index` | `workspaceId:uuid`, `cursor?:string`, `limit:int(1-100)=50` | `{slugs[], nextCursor:string\|null, total:int}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED` |
-| `source.list` | `workspaceId:uuid`, `pageTypeFilter?:string[]` | `sources[]{id,name,pageType,status,pageCount}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED` |
-| `source.fetch` | `sourceId:uuid`, `pageRange?:{start,end}`, `maxChars:int≤40000=20000` | `{text:string, outline[]{heading,level,charOffset}}` | `SOURCE_NOT_FOUND`, `SCOPE_DENIED`, `PAGE_RANGE_INVALID` |
-| `people.lookup` | `query:string(1-200)`, `departmentId?:uuid` | `people[]{id,displayName,departmentId,email}` | `SCOPE_DENIED` |
-| `tenant.context` | _(none)_ | `{serverVersion,activeProviders[],embeddingModel,featureFlags{}}` | _(none)_ |
+| `wiki.search` | `query:string`, `workspaceId:uuid`, `topK:int(1-20)=5`, `mode:auto\|semantic\|keyword` | `notes[]{slug,title,excerpt,score}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED`, `EMBEDDING_UNAVAILABLE` |
+| `wiki.fetch` | `slug:string`, `workspaceId:uuid`, `version?:int` | `{slug,title,content,version,kind,tags[],links[]}` | `NOTE_NOT_FOUND`, `SCOPE_DENIED`, `VERSION_NOT_FOUND` |
+| `wiki.catalog` | `workspaceId:uuid`, `cursor?:string`, `limit:int(1-100)=50` | `{slugs[], nextCursor:string\|null, total:int}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED` |
+| `wiki.recent` | `workspaceId:uuid`, `since?:datetime`, `limit:int(1-50)=20` | `notes[]{slug,title,updatedAt,kind}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED` |
+| `material.read` | `materialId:uuid`, `pageRange?:{start,end}`, `maxChars:int≤40000=20000` | `{text:string, outline[]{heading,level,charOffset}}` | `MATERIAL_NOT_FOUND`, `SCOPE_DENIED`, `PAGE_RANGE_INVALID` |
+| `directory.lookup` | `query:string(1-200)`, `workspaceId:uuid` | non-admin: `users[]{userId,displayName}`; admin: `users[]{userId,displayName,email}` | `SCOPE_DENIED`, `INSUFFICIENT_TIER` |
+| `workspace.info` | `workspaceId:uuid` | `{workspaceId,displayName,memberCount,featureFlags{},embeddingModel}` | `WORKSPACE_NOT_FOUND`, `SCOPE_DENIED` |
+| `note.crossrefs` | `slug:string`, `workspaceId:uuid`, `depth:int(1-3)=1` | `{nodes[]{slug,title}, edges[]{from,to,linkText}}` | `NOTE_NOT_FOUND`, `SCOPE_DENIED` |
 
-All inputs validated by Zod at the Hono middleware layer before tool handler runs.
+All inputs validated by Zod at the transport layer before tool handler runs.
 All outputs are JSON-serialisable; no binary blobs in tool responses.
 
 ### System instructions
 
 The MCP server registers a system instructions string advising Claude:
-> "Search wiki first (`wiki.search`). Fetch full page (`wiki.fetch`) only when excerpt
-> is insufficient. Use `wiki.graph` to find related concepts. Cite source slugs in answers."
+> "Search wiki first (`wiki.search`). Fetch full note (`wiki.fetch`) only when excerpt
+> is insufficient. Use `note.crossrefs` to find related concepts. Cite note slugs in answers."
 
 ## Consequences
 

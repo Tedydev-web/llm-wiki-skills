@@ -3,5 +3,5 @@
   "private": true,
   "version": "2.0.0-alpha.0",
   "type": "module",
-  "description": "Shared utilities and helpers used across wiki-team packages"
+  "description": "Shared utilities and helpers used across wiki-team packages. AGPL-bound deps (mupdf) live in @wiki-team/pdf-extract only — see ADR 009 §AGPL boundary."
 }

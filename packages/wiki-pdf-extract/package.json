@@ -1,0 +1,16 @@
+{
+  "name": "@wiki-team/pdf-extract",
+  "private": true,
+  "version": "2.0.0-alpha.0",
+  "type": "module",
+  "description": "AGPL-boundary package: MuPDF.js PDF text extraction isolated behind a typed API. Importing mupdf outside this package violates the AGPL isolation contract (see LICENSE-NOTICE.md and ADR 009).",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "mupdf": "^0.3.0"
+  },
+  "license": "AGPL-3.0-only",
+  "keywords": ["agpl-boundary", "pdf", "mupdf"]
+}
