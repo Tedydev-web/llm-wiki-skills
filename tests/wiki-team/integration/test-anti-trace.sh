@@ -27,6 +27,7 @@ CLASS_NAMES=(
   ScopeType
   WorkspaceRole
   MCPAuthService
+  KnowledgeType
 )
 
 # Constants
@@ -59,6 +60,12 @@ FUNCTIONS=(
   refresh_links
 )
 
+# Snake-case identifiers (v2.1 additions — arkon attr/method names forbidden in scaffold)
+SNAKE_NAMES=(
+  vision_caption
+  provider_registry
+)
+
 # Brand tokens
 BRAND=(
   arkon
@@ -72,6 +79,7 @@ EXCLUDES=(
   -path "${REPO_ROOT}/tests/fixtures" -prune -o
   -path "${REPO_ROOT}/tests/wiki-team/integration/test-anti-trace.sh" -prune -o
   -path "${REPO_ROOT}/docs/decisions/009-*" -prune -o
+  -path "${REPO_ROOT}/docs/decisions/README.md" -prune -o
   -path "${REPO_ROOT}/apps/wiki-skills" -prune -o
   -path "${REPO_ROOT}/plans" -prune -o
   -path "${REPO_ROOT}/node_modules" -prune -o
@@ -102,6 +110,7 @@ ALL_TOKENS=(
   "${CLASS_NAMES[@]}"
   "${CONSTANTS[@]}"
   "${FUNCTIONS[@]}"
+  "${SNAKE_NAMES[@]}"
   "${BRAND[@]}"
 )
 
