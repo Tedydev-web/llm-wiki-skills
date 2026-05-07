@@ -48,7 +48,7 @@ services:
       # SECURITY: replace CHANGE_ME_BEFORE_BOOT before any non-local deployment.
       # The app's assertEnv() will crash at boot if these literal values are detected.
       MINIO_ROOT_USER: wiki
-      MINIO_ROOT_PASSWORD: CHANGE_ME_BEFORE_BOOT
+      MINIO_ROOT_PASSWORD: devminio332942d1e5343742
     ports:
       - "9000:9000"
       - "9001:9001"

@@ -3,5 +3,18 @@
   "private": true,
   "version": "2.0.0-alpha.0",
   "type": "module",
-  "description": "Shared utilities and helpers used across wiki-team packages. AGPL-bound deps (mupdf) live in @wiki-team/pdf-extract only — see ADR 009 §AGPL boundary."
+  "description": "Shared utilities and helpers used across wiki-team packages. AGPL-bound deps (mupdf) live in @wiki-team/pdf-extract only — see ADR 009 §AGPL boundary.",
+  "exports": {
+    "./providers": "./src/providers/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@google/generative-ai": "^0.15.0",
+    "openai": "^4.67.0",
+    "voyageai": "^0.0.4"
+  },
+  "devDependencies": {
+    "bun-types": "^1.1.0",
+    "typescript": "^5.7.2"
+  }
 }

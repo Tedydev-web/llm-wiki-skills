@@ -28,7 +28,12 @@
     "ioredis": "^5.4.0",
     "jsdom": "^26.0.0",
     "mammoth": "^1.8.0",
-    "postgres": "^3.4.4"
+    "postgres": "^3.4.4",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "openai": "^4.67.0",
+    "voyageai": "^0.0.4",
+    "@wiki-team/shared": "*"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

@@ -14,6 +14,7 @@
 import { createHmac, createHash } from 'node:crypto';
 import type { Context, MiddlewareHandler, Next } from 'hono';
 import type { AuthContextEnv } from '../../auth/auth-context.js';
+import { logger } from '../../lib/logger.js';
 import { getDb, schema } from '../../storage/db.js';
 
 // Mutation methods that trigger an audit write
@@ -52,7 +53,7 @@ export function auditLog(
       void writeAuditEvent(c, action, resourceType, getResourceId(c) ?? null, bodyBytes).catch(
         (err) => {
           // Audit write failure is logged but never surfaces to client
-          console.error('[audit-log] write failed:', err instanceof Error ? err.message : err);
+          logger.error({ err: err instanceof Error ? err.message : err }, '[audit-log] write failed');
         },
       );
     }
@@ -72,7 +73,7 @@ async function writeAuditEvent(
   const secret = process.env['AUDIT_HMAC_SECRET'];
   if (!secret || secret.includes('CHANGE_ME_BEFORE_BOOT')) {
     // Config error — log loudly but don't crash the process
-    console.error('[audit-log] AUDIT_HMAC_SECRET not configured; skipping audit write');
+    logger.error('[audit-log] AUDIT_HMAC_SECRET not configured; skipping audit write');
     return;
   }
 

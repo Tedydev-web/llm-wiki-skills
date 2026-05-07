@@ -23,5 +23,12 @@
     "db:reset": "bun run apps/wiki-team/storage/db-migrate-runner.ts --reset",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0",
+    "pino": "^9.6.0"
+  },
+  "dependencies": {
+    "hono": "^4.12.18"
   }
 }

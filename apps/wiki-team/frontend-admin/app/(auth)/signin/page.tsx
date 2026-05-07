@@ -1,6 +1,9 @@
 /**
- * signin/page.tsx — OAuth sign-in page.
- * Shows Google + GitHub buttons. Handles ?reason=fresh-required for step-up reauth.
+ * signin/page.tsx — Sign-in page: OAuth buttons + email/password form.
+ *
+ * Shows Google + GitHub OAuth buttons, then a divider, then email+password
+ * form (P06: admin bootstrap onboarding path via DEFAULT_ADMIN_EMAIL).
+ * Handles ?reason=fresh-required for step-up reauth.
  */
 
 'use client';
@@ -9,6 +12,7 @@ import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { signInWithProvider } from '@/lib/better-auth-client';
+import { PasswordForm } from './components/password-form';
 
 export default function SignInPage() {
   const params = useSearchParams();
@@ -30,6 +34,7 @@ export default function SignInPage() {
           </div>
         )}
 
+        {/* OAuth providers */}
         <div className="flex flex-col gap-3">
           <Button
             variant="outline"
@@ -46,6 +51,16 @@ export default function SignInPage() {
             Continue with GitHub
           </Button>
         </div>
+
+        {/* Divider */}
+        <div className="relative flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">Or sign in with email</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Email + password form (P06: admin bootstrap onboarding path) */}
+        <PasswordForm callbackURL="/" />
       </div>
     </main>
   );

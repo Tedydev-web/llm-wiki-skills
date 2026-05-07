@@ -110,6 +110,16 @@ export interface NoteSummary {
   kbId: string;
 }
 
+export interface NoteKind {
+  id: string;
+  slug: string;
+  label: string;
+  color: string;
+  description: string | null;
+  isSystemDefault: boolean;
+  createdAt: string;
+}
+
 export interface McpTokenMetadata {
   id: string;
   prefixLookup: string;
@@ -343,6 +353,40 @@ export const api = {
       await apiFetch<void>(`/api/workspaces/${workspaceId}/notes/${noteSlug}`, {
         method: 'DELETE',
       });
+    },
+  },
+
+  noteKinds: {
+    list: async (workspaceId: string): Promise<NoteKind[]> => {
+      const { data } = await apiFetch<{ noteKinds: NoteKind[] }>(`/api/workspaces/${workspaceId}/note-kinds`);
+      return data.noteKinds;
+    },
+
+    create: async (
+      workspaceId: string,
+      input: { slug: string; label: string; color?: string; description?: string },
+    ): Promise<NoteKind> => {
+      const { data } = await apiFetch<{ noteKind: NoteKind }>(`/api/workspaces/${workspaceId}/note-kinds`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      return data.noteKind;
+    },
+
+    patch: async (
+      workspaceId: string,
+      slug: string,
+      patch: { color?: string; description?: string },
+    ): Promise<NoteKind> => {
+      const { data } = await apiFetch<{ noteKind: NoteKind }>(
+        `/api/workspaces/${workspaceId}/note-kinds/${slug}`,
+        { method: 'PATCH', body: JSON.stringify(patch) },
+      );
+      return data.noteKind;
+    },
+
+    delete: async (workspaceId: string, slug: string): Promise<void> => {
+      await apiFetch<void>(`/api/workspaces/${workspaceId}/note-kinds/${slug}`, { method: 'DELETE' });
     },
   },
 

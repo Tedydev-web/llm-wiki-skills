@@ -3,14 +3,16 @@
  *
  * Boot sequence:
  *   1. Assert required env vars (DB, auth, audit)
- *   2. Init DB singleton (getDb)
- *   3. Init Redis (ioredis) for BullMQ producer + token rate-limiting
- *   4. Build Better Auth instance
- *   5. Build McpTokenDb adapter (shared with mcp-host)
- *   6. Mount auth middleware (global /api/*)
- *   7. Mount API router (all routes)
- *   8. Attach error handler
- *   9. Bun.serve on API_PORT
+ *   2. assertProductionSecurityPosture() — weak-password + placeholder checks (P06)
+ *   3. Init DB singleton (getDb)
+ *   4. maybeBootstrapAdmin(db) — create DEFAULT_ADMIN_EMAIL user if not exists (P06)
+ *   5. Init Redis (ioredis) for BullMQ producer + token rate-limiting
+ *   6. Build Better Auth instance
+ *   7. Build McpTokenDb adapter (shared with mcp-host)
+ *   8. Mount auth middleware (global /api/*)
+ *   9. Mount API router (all routes)
+ *  10. Attach error handler
+ *  11. Bun.serve on API_PORT
  *
  * Ports:
  *   API_PORT  (default 3333) — this server
@@ -21,12 +23,19 @@
 
 import { Hono } from 'hono';
 import { Redis } from 'ioredis';
+import { logger } from './lib/logger.js';
+import { initSentry } from './lib/sentry.js';
 import { getDb } from './storage/db.js';
 import { assertAuthEnv, createAuthInstance } from './auth/better-auth.js';
+import { assertProductionSecurityPosture } from './auth/boot-security-check.js';
+import { maybeBootstrapAdmin } from './auth/admin-bootstrap.js';
 import { buildAuthMiddleware } from './api/middleware/auth.js';
 import { globalErrorHandler } from './api/middleware/error-handler.js';
 import { buildApiRouter } from './api/index.js';
 import { buildMcpTokenDbAdapter } from './api/routes/tokens.js';
+
+// Sentry must be initialized before any other code that might throw
+await initSentry();
 
 // ---------------------------------------------------------------------------
 // Environment validation
@@ -55,11 +64,23 @@ function assertServerEnv(): void {
 
 assertServerEnv();
 
+// P06: security posture check — weak-password + placeholder guards before any I/O
+assertProductionSecurityPosture();
+
 const API_PORT = parseInt(process.env['API_PORT'] ?? '3333', 10);
 const REDIS_URL = process.env['REDIS_URL']!;
 
 // DB singleton (validates DATABASE_URL + CHANGE_ME_BEFORE_BOOT on first call)
 const db = getDb();
+
+// P06: idempotent admin bootstrap — creates DEFAULT_ADMIN_EMAIL user if env set + user absent.
+// DEFAULT_ADMIN_PASSWORD is deleted from process.env inside maybeBootstrapAdmin on success.
+const bootstrapResult = await maybeBootstrapAdmin(db);
+if (bootstrapResult.outcome === 'created') {
+  logger.info({ userId: bootstrapResult.userId }, '[server] Admin user bootstrapped successfully');
+} else if (bootstrapResult.outcome === 'skipped' && bootstrapResult.reason !== 'DEFAULT_ADMIN_EMAIL not set') {
+  logger.warn({ reason: bootstrapResult.reason }, '[server] Admin bootstrap skipped');
+}
 
 // Redis client (shared by BullMQ producer + token rate-limit adapter)
 const redis = new Redis(REDIS_URL, {
@@ -69,7 +90,7 @@ const redis = new Redis(REDIS_URL, {
 });
 
 redis.on('error', (err) => {
-  console.error('[server] Redis error:', err.message);
+  logger.error({ err: err.message }, '[server] Redis error');
 });
 
 // Better Auth instance
@@ -110,7 +131,7 @@ Bun.serve({
   port: API_PORT,
   fetch: app.fetch,
   error(err: Error): Response {
-    console.error('[server] unhandled error:', err.message);
+    logger.error({ err: err.message }, '[server] unhandled error');
     return new Response(
       JSON.stringify({ error: 'internal_server_error', message: err.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
@@ -118,7 +139,7 @@ Bun.serve({
   },
 });
 
-console.log(`[server] wiki-team HTTP API listening on port ${API_PORT}`);
-console.log(`[server] Health:   GET  http://localhost:${API_PORT}/healthz`);
-console.log(`[server] OpenAPI:  GET  http://localhost:${API_PORT}/openapi.json`);
-console.log(`[server] Swagger:  GET  http://localhost:${API_PORT}/docs`);
+logger.info({ port: API_PORT }, '[server] wiki-team HTTP API listening');
+logger.info(`[server] Health:   GET  http://localhost:${API_PORT}/healthz`);
+logger.info(`[server] OpenAPI:  GET  http://localhost:${API_PORT}/openapi.json`);
+logger.info(`[server] Swagger:  GET  http://localhost:${API_PORT}/docs`);

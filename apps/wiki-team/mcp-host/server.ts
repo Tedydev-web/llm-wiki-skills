@@ -41,6 +41,7 @@ import type { PermissionGrant } from '@wiki-team/schema';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { logger } from '../lib/logger.js';
 
 // Tool builders
 import { buildWikiSearchTool } from './tools/wiki-search.js';
@@ -51,6 +52,8 @@ import { buildMaterialReadTool } from './tools/material-read.js';
 import { buildDirectoryLookupTool } from './tools/directory-lookup.js';
 import { buildWorkspaceInfoTool } from './tools/workspace-info.js';
 import { buildNoteCrossrefsTool } from './tools/note-crossrefs.js';
+import { buildListKnowledgeTypesTool } from './tools/list-knowledge-types.js';
+import { buildGetKnowledgeTypeDocsTool } from './tools/get-knowledge-type-docs.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -246,6 +249,8 @@ const ALL_TOOL_NAMES = [
   'directory.lookup',
   'workspace.info',
   'note.crossrefs',
+  'wiki.list_knowledge_types',
+  'wiki.get_knowledge_type_docs',
 ] as const;
 
 // Descriptions mirrored from tool files — kept in sync manually (YAGNI: no codegen for 8 tools)
@@ -258,6 +263,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'directory.lookup': 'Search workspace members by name. Non-admin callers receive userId and displayName only. Admin callers also receive the email field.',
   'workspace.info': 'Retrieve metadata for the current workspace: slug, display name, member count, note count.',
   'note.crossrefs': 'List outbound cross-references (wikilinks) from a note. Use to traverse the knowledge graph.',
+  'wiki.list_knowledge_types': 'List all NoteKind taxonomy entries available in the workspace. Returns slug, label, color, and description for each kind.',
+  'wiki.get_knowledge_type_docs': 'Get notes belonging to a specific NoteKind taxonomy slug in a workspace. Supports offset-based pagination via limit and offset parameters.',
 };
 
 // Minimal JSON Schema descriptors for ListTools (full validation happens in tool handlers via Zod)
@@ -270,6 +277,8 @@ const TOOL_SCHEMAS: Record<string, object> = {
   'directory.lookup': { type: 'object', properties: { query: { type: 'string' }, workspaceId: { type: 'string' } }, required: ['query', 'workspaceId'] },
   'workspace.info': { type: 'object', properties: { workspaceId: { type: 'string' } }, required: ['workspaceId'] },
   'note.crossrefs': { type: 'object', properties: { slug: { type: 'string' }, workspaceId: { type: 'string' } }, required: ['slug', 'workspaceId'] },
+  'wiki.list_knowledge_types': { type: 'object', properties: { workspaceId: { type: 'string' } }, required: ['workspaceId'] },
+  'wiki.get_knowledge_type_docs': { type: 'object', properties: { workspaceId: { type: 'string' }, kindSlug: { type: 'string' }, limit: { type: 'integer' }, offset: { type: 'integer' } }, required: ['workspaceId', 'kindSlug'] },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic dispatch over 8 tools with heterogeneous Zod schemas; ToolDefinition's ZodObject generic is invariant
@@ -284,8 +293,10 @@ function buildTool(name: string, ctx: any): { mcpHandler: (args: unknown) => Pro
     case 'material.read':  return buildMaterialReadTool(ctx) as AnyTool;
     case 'directory.lookup': return buildDirectoryLookupTool(ctx) as AnyTool;
     case 'workspace.info': return buildWorkspaceInfoTool(ctx) as AnyTool;
-    case 'note.crossrefs': return buildNoteCrossrefsTool(ctx) as AnyTool;
-    default:               return null;
+    case 'note.crossrefs':              return buildNoteCrossrefsTool(ctx) as AnyTool;
+    case 'wiki.list_knowledge_types':   return buildListKnowledgeTypesTool(ctx) as AnyTool;
+    case 'wiki.get_knowledge_type_docs': return buildGetKnowledgeTypeDocsTool(ctx) as AnyTool;
+    default:                            return null;
   }
 }
 
@@ -350,7 +361,7 @@ Bun.serve({
   },
 
   error(err: Error): Response {
-    console.error('[mcp-server] unhandled error:', err.message);
+    logger.error({ err: err.message }, '[mcp-server] unhandled error');
     return new Response(
       JSON.stringify({ error: 'internal_server_error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
@@ -358,7 +369,7 @@ Bun.serve({
   },
 });
 
-console.log(`[mcp-server] listening on port ${MCP_PORT}`);
-console.log(`[mcp-server] Streamable HTTP: POST http://localhost:${MCP_PORT}/mcp`);
-console.log(`[mcp-server] SSE legacy:      GET  http://localhost:${MCP_PORT}/mcp/sse`);
-console.log(`[mcp-server] Health check:    GET  http://localhost:${MCP_PORT}/healthz`);
+logger.info({ port: MCP_PORT }, '[mcp-server] listening');
+logger.info(`[mcp-server] Streamable HTTP: POST http://localhost:${MCP_PORT}/mcp`);
+logger.info(`[mcp-server] SSE legacy:      GET  http://localhost:${MCP_PORT}/mcp/sse`);
+logger.info(`[mcp-server] Health check:    GET  http://localhost:${MCP_PORT}/healthz`);

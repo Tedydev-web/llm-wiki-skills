@@ -182,14 +182,51 @@ export const noteKinds = pgTable(
   'note_kinds',
   {
     id:          pk(),
-    /** Canonical slug: fact | analysis | procedure | reference */
+    /** Canonical slug: fact | analysis | procedure | reference (ADR 010 defaults). Custom kinds added by admin via P02 CRUD. */
     slug:        varchar('slug', { length: 32 }).notNull(),
     displayName: varchar('display_name', { length: 80 }).notNull(),
     description: text('description'),
+    /** Hex color for UI badges (#rrggbb); default neutral gray (P02 / ADR 014) */
+    color:       varchar('color', { length: 7 }).notNull().default('#6b7280'),
+    /** Admin who created custom kind; null for system defaults (P02 / ADR 014) */
+    createdByUserId: uuid('created_by_user_id'),
+    /** ADR 010 4-tuple: true; admin-created custom kinds: false (immutable for true rows) */
+    isSystemDefault: boolean('is_system_default').notNull().default(false),
     createdAt:   createdAt(),
   },
   (t) => ({
     slugUidx: uniqueIndex('note_kinds_slug_uidx').on(t.slug),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// 6b. provider_settings — multi-provider LLM/embedding/vision config (P01 / ADR 013)
+//     Encrypted API keys via HKDF + AES-GCM-256; salt per workspace + rotation epoch.
+
+export const providerSettings = pgTable(
+  'provider_settings',
+  {
+    id:                 pk(),
+    workspaceId:        uuid('workspace_id').notNull(),                         // FK → workspaces.id
+    /** 'llm' | 'embedding' | 'vision' (ADR 013 §Capability) */
+    capability:         varchar('capability', { length: 16 }).notNull(),
+    /** 'openai' | 'google' | 'anthropic' | 'voyage' (ADR 013 §Vendor) */
+    vendor:             varchar('vendor', { length: 16 }).notNull(),
+    /** Specific model name, e.g. 'text-embedding-3-small', 'gpt-4o', 'claude-sonnet-4-5' */
+    model:              varchar('model', { length: 64 }).notNull(),
+    /** AES-GCM-256 ciphertext of API key (raw bytes hex-encoded) */
+    apiKeyEncrypted:    text('api_key_encrypted').notNull(),
+    /** JSONB: { iv: hex, salt: hex, rotationEpoch: number, info: 'provider-api-key-v1' } */
+    encryptionMetadata: jsonb('encryption_metadata').notNull(),
+    /** Per-provider daily cost cap in USD (default $5/day; admin tunable) */
+    dailyCostCapUsd:    varchar('daily_cost_cap_usd', { length: 10 }).notNull().default('5.00'),
+    createdAt:          createdAt(),
+    updatedAt:          updatedAt(),
+  },
+  (t) => ({
+    uniqWsCapVendor: uniqueIndex('provider_settings_ws_cap_vendor_uidx').on(t.workspaceId, t.capability, t.vendor),
+    workspaceIdx:    index('provider_settings_workspace_idx').on(t.workspaceId),
+    wsCapIdx:        index('provider_settings_ws_cap_idx').on(t.workspaceId, t.capability),
   }),
 );
 

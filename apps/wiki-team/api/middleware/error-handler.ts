@@ -6,6 +6,7 @@
  */
 
 import type { Context, ErrorHandler } from 'hono';
+import { logger } from '../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Canonical error response shape
@@ -43,6 +44,13 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
     typeof errAsStatus.status === 'number' ? errAsStatus.status : 500;
 
   const message = err instanceof Error ? err.message : String(err);
+
+  // Log 5xx errors server-side (4xx are client errors — log at debug only)
+  if (status >= 500) {
+    logger.error({ status, err: message }, '[error-handler] unhandled server error');
+  } else {
+    logger.debug({ status, err: message }, '[error-handler] client error');
+  }
 
   // Avoid leaking stack traces in production
   const isProduction = process.env['NODE_ENV'] === 'production';

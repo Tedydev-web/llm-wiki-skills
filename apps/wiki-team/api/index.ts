@@ -13,8 +13,10 @@ import { buildWorkspacesRouter } from './routes/workspaces.js';
 import { buildMembersRouter } from './routes/members.js';
 import { buildMaterialsRouter } from './routes/materials.js';
 import { buildNotesRouter } from './routes/notes.js';
+import { buildNoteKindsRouter } from './routes/note-kinds.js';
 import { buildTokensRouter } from './routes/tokens.js';
 import { buildHealthRouter } from './routes/health.js';
+import { buildAuthExtrasRouter } from './routes/auth-extras.js';
 import { openapiSpec } from './openapi.js';
 
 export function buildApiRouter(redis: Redis, redisUrl: string): Hono<AuthContextEnv> {
@@ -50,7 +52,9 @@ export function buildApiRouter(redis: Redis, redisUrl: string): Hono<AuthContext
   app.route('/api', buildMembersRouter());
   app.route('/api', buildMaterialsRouter(redisUrl));
   app.route('/api', buildNotesRouter());
+  app.route('/api', buildNoteKindsRouter());
   app.route('/api', buildTokensRouter(redis));
+  app.route('/api', buildAuthExtrasRouter());
 
   return app;
 }

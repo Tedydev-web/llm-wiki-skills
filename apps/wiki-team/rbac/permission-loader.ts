@@ -15,6 +15,7 @@
 
 import { eq, and } from 'drizzle-orm';
 import { parsePermission, type PermissionGrant } from '@wiki-team/schema';
+import { logger } from '../lib/logger.js';
 import { getDb, schema } from '../storage/db.js';
 import { type MembershipTier, MEMBERSHIP_TIERS } from './role-hierarchy.js';
 
@@ -68,7 +69,7 @@ export async function loadPermissions(userId: string): Promise<PermissionGrant[]
         grants.push(parsePermission(raw));
       } catch {
         // Invalid permission string in DB — log and skip (do NOT silently grant)
-        console.warn(`[rbac] loadPermissions: skipping invalid permission string "${raw}" for user ${userId}`);
+        logger.warn({ raw, userId }, '[rbac] loadPermissions: skipping invalid permission string');
       }
     }
   }
@@ -111,7 +112,7 @@ export async function loadMembershipRole(
 
   // Validate tier value is a known MembershipTier (guard against stale DB data)
   if (!(MEMBERSHIP_TIERS as readonly string[]).includes(tier)) {
-    console.warn(`[rbac] loadMembershipRole: unknown tier value "${tier}" for user ${userId} in workspace ${workspaceId}`);
+    logger.warn({ tier, userId, workspaceId }, '[rbac] loadMembershipRole: unknown tier value');
     return null;
   }
 

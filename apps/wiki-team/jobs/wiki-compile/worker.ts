@@ -15,6 +15,7 @@
 
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { logger } from '../../lib/logger.js';
 import { processWikiCompileJob, type WikiCompileJobData } from './job-handler.js';
 
 // ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ export function createWikiCompileWorker(): Worker {
   });
 
   sharedRedis.on('error', (err) => {
-    console.error('[worker] Redis connection error:', err.message);
+    logger.error({ err: err.message }, '[worker] Redis connection error');
   });
 
   const worker = new Worker<WikiCompileJobData>(
@@ -96,29 +97,29 @@ export function createWikiCompileWorker(): Worker {
   );
 
   worker.on('completed', (job) => {
-    console.info(`[worker] job ${job.id} completed (materialId=${job.data.materialId})`);
+    logger.info({ jobId: job.id, materialId: job.data.materialId }, '[worker] job completed');
   });
 
   worker.on('failed', (job, err) => {
-    console.error(
-      `[worker] job ${job?.id} failed (materialId=${job?.data?.materialId}): ` +
-      `${err instanceof Error ? err.message : String(err)}`,
+    logger.error(
+      { jobId: job?.id, materialId: job?.data?.materialId, err: err instanceof Error ? err.message : String(err) },
+      '[worker] job failed',
     );
   });
 
   worker.on('error', (err) => {
-    console.error('[worker] BullMQ worker error:', err instanceof Error ? err.message : String(err));
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[worker] BullMQ worker error');
   });
 
   // Graceful shutdown handler
   const shutdown = async (signal: string) => {
-    console.info(`[worker] ${signal} received — closing worker gracefully`);
+    logger.info({ signal }, '[worker] signal received — closing worker gracefully');
     try {
       await worker.close();
       await sharedRedis.quit();
-      console.info('[worker] shutdown complete');
+      logger.info('[worker] shutdown complete');
     } catch (err) {
-      console.error('[worker] error during shutdown:', err);
+      logger.error({ err }, '[worker] error during shutdown');
       process.exit(1);
     }
     process.exit(0);
@@ -127,8 +128,9 @@ export function createWikiCompileWorker(): Worker {
   process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
   process.on('SIGINT', () => { void shutdown('SIGINT'); });
 
-  console.info(
-    `[worker] wiki-compile worker started (concurrency=${concurrency}, redis=${redisUrl.replace(/:[^:@]+@/, ':***@')})`,
+  logger.info(
+    { concurrency, redis: redisUrl.replace(/:[^:@]+@/, ':***@') },
+    '[worker] wiki-compile worker started',
   );
 
   return worker;

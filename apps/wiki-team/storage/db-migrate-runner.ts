@@ -21,6 +21,7 @@
 import postgres from 'postgres';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -52,7 +53,7 @@ function readSql(filePath: string): string {
 }
 
 function log(msg: string): void {
-  console.log(`[db:migrate] ${msg}`);
+  logger.info(msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +91,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('[db:migrate] FATAL:', err);
+  logger.error({ err }, '[db:migrate] FATAL');
   process.exit(1);
 });

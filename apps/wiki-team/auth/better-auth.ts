@@ -20,6 +20,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { buildGithubProviderConfig, buildGoogleProviderConfig } from './oauth-providers.js';
+import { emailPasswordConfig, accountLinkingConfig } from './email-password-adapter.js';
 
 // ---------------------------------------------------------------------------
 // Required env vars
@@ -88,12 +89,20 @@ export function createAuthInstance(db: DrizzleDb) {
       },
     },
 
+    // Email + password auth (P06: admin bootstrap onboarding path)
+    // minPasswordLength: 12, autoSignIn: true — see email-password-adapter.ts
+    ...emailPasswordConfig,
+
     // Social OAuth providers (Google + GitHub)
     // PKCE is enabled by default in Better Auth for both providers
     socialProviders: {
       google: buildGoogleProviderConfig(),
       github: buildGithubProviderConfig(),
     },
+
+    // Account linking DISABLED — prevents OAuth email-collision attack (S-6)
+    // A Google OAuth user sharing email with bootstrap admin must NOT inherit admin perms.
+    ...accountLinkingConfig,
 
     // Step-up reauth: require fresh session (≤15 min) for sensitive operations
     // Better Auth exposes session.createdAt; mcp-token-service.ts checks freshness.

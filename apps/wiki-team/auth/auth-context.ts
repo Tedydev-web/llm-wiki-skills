@@ -25,6 +25,7 @@ import type { PermissionGrant } from '@wiki-team/schema';
 import type { AuthInstance } from './better-auth.js';
 import type { McpTokenDb } from './mcp-token-service.js';
 import { verifyMcpToken } from './mcp-token-service.js';
+import { logger } from '../lib/logger.js';
 import { loadPermissions, loadMembershipRole } from '../rbac/permission-loader.js';
 
 // ---------------------------------------------------------------------------
@@ -102,7 +103,7 @@ export function authContextMiddleware(
       } catch (err) {
         // verifyMcpToken or loader throws on internal errors (e.g. BETTER_AUTH_SECRET missing)
         // Treat as unauthenticated; log error for ops visibility
-        console.error('[auth] Bearer path error:', err instanceof Error ? err.message : err);
+        logger.error({ err: err instanceof Error ? err.message : err }, '[auth] Bearer path error');
         resolved = null;
       }
     }
@@ -122,7 +123,7 @@ export function authContextMiddleware(
         }
       } catch (err) {
         // Session lookup or loader failure is non-fatal — treat as unauthenticated
-        console.error('[auth] session path error:', err instanceof Error ? err.message : err);
+        logger.error({ err: err instanceof Error ? err.message : err }, '[auth] session path error');
         resolved = null;
       }
     }

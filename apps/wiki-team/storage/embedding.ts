@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -58,9 +59,9 @@ function getClient(): GoogleGenerativeAI {
 export async function embed(text: string): Promise<Float32Array> {
   if (text.length > MAX_INPUT_CHARS) {
     // Truncate and continue — do not throw; warn instead so callers don't crash on long docs
-    console.warn(
-      `[embedding] Input truncated from ${text.length} to ${MAX_INPUT_CHARS} chars ` +
-      'before embedding. Consider chunking long documents.',
+    logger.warn(
+      { originalLen: text.length, truncatedLen: MAX_INPUT_CHARS },
+      '[embedding] Input truncated before embedding. Consider chunking long documents.',
     );
     text = text.slice(0, MAX_INPUT_CHARS);
   }

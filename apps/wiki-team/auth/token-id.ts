@@ -12,6 +12,7 @@
  */
 
 import { createHmac, randomBytes } from 'crypto';
+import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -75,10 +76,10 @@ export function computePrefixLookup(plaintext: string, secret: string): string {
 const _env: string | undefined = (globalThis as any)?.process?.env?.['NODE_ENV'];
 if (_env !== 'test') {
   const { plaintext } = generateMcpTokenId();
-  console.assert(plaintext.startsWith('wkt_'), 'token must start with wkt_');
-  console.assert(plaintext.length === 36, `token length must be 36, got ${plaintext.length}`);
+  if (!plaintext.startsWith('wkt_')) logger.error('[token-id] invariant: token must start with wkt_');
+  if (plaintext.length !== 36) logger.error({ len: plaintext.length }, '[token-id] invariant: token length must be 36');
 
   const lookup = computePrefixLookup(plaintext, 'test-secret');
-  console.assert(lookup.length === 16, `prefix_lookup must be 16 hex chars, got ${lookup.length}`);
-  console.assert(/^[0-9a-f]+$/.test(lookup), 'prefix_lookup must be lowercase hex');
+  if (lookup.length !== 16) logger.error({ len: lookup.length }, '[token-id] invariant: prefix_lookup must be 16 hex chars');
+  if (!/^[0-9a-f]+$/.test(lookup)) logger.error('[token-id] invariant: prefix_lookup must be lowercase hex');
 }

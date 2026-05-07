@@ -15,6 +15,7 @@
 
 import { and, eq } from 'drizzle-orm';
 import type { Redis } from 'ioredis';
+import { logger } from '../../lib/logger.js';
 import { getDb, schema } from '../../storage/db.js';
 import { SENTINEL_CATALOG } from './slug-rules.js';
 
@@ -40,7 +41,7 @@ export async function rebuildCatalogWithMutex(
   const acquired = await redis.set(mutexKey, '1', 'EX', CATALOG_MUTEX_TTL_SECONDS, 'NX');
 
   if (!acquired) {
-    console.info(`[catalog-rebuild] mutex held for workspace ${workspaceId} — skipping`);
+    logger.info({ workspaceId }, '[catalog-rebuild] mutex held — skipping');
     return;
   }
 

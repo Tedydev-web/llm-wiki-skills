@@ -13,6 +13,8 @@
     "rbac/**/*",
     "storage/**/*",
     "jobs/**/*",
-    "mcp-host/**/*"
+    "mcp-host/**/*",
+    "services/**/*",
+    "lib/**/*"
   ]
 }

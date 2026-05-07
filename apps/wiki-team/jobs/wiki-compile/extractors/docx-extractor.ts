@@ -7,6 +7,7 @@
 
 import mammoth from 'mammoth';
 import type { ExtractedMaterial } from './pdf-extractor.js';
+import { logger } from '../../../lib/logger.js';
 
 // Shared cap constant — own value per phase-06 spec
 const MATERIAL_CHARS_CAP = 150_000;
@@ -46,7 +47,7 @@ export async function extractFromDocx(buf: Buffer): Promise<ExtractedMaterial> {
     }
     // Warnings are informational — log only in non-test envs
     if (process.env['NODE_ENV'] !== 'test') {
-      console.warn('[docx-extractor] mammoth warning:', msg.message);
+      logger.warn({ msg: msg.message }, '[docx-extractor] mammoth warning');
     }
   }
 

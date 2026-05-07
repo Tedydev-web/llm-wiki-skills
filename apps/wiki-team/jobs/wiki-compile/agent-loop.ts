@@ -11,6 +11,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages.js';
 import type { AuthContext } from '../../auth/auth-context.js';
 import type { CostMeter } from './cost-meter.js';
+import { logger } from '../../lib/logger.js';
 import { loadSystemPrompt } from './prompts/prompt-loader.js';
 import { TOOL_DEFINITIONS } from './tool-definitions.js';
 
@@ -151,7 +152,7 @@ export async function runWikiCompile(input: AgentLoopInput): Promise<AgentLoopRe
         unknownToolRetry = false;
       } catch (err) {
         if (err instanceof CompletionSignal) {
-          console.info(`[agent-loop] complete() after ${STEP_BUDGET - stepsRemaining + 1} steps`);
+          logger.info({ steps: STEP_BUDGET - stepsRemaining + 1 }, '[agent-loop] complete()');
           return {
             output: err.output,
             stepsUsed: STEP_BUDGET - stepsRemaining + 1,
@@ -181,7 +182,7 @@ export async function runWikiCompile(input: AgentLoopInput): Promise<AgentLoopRe
         }
       }
 
-      console.info(`[agent-loop] tool=${block.name} dur=${Date.now() - startMs}ms err=${isError}`);
+      logger.info({ tool: block.name, durMs: Date.now() - startMs, isError }, '[agent-loop] tool call');
       toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: resultContent, is_error: isError });
     }
 

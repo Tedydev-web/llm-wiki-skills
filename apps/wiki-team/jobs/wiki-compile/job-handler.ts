@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
+import { logger } from '../../lib/logger.js';
 import { getDb, schema } from '../../storage/db.js';
 import { getObjectStore } from '../../storage/object-store.js';
 import { runWikiCompile } from './agent-loop.js';
@@ -64,8 +65,9 @@ export async function processWikiCompileJob(
     .limit(1);
 
   if (existingJobs.length > 0 && existingJobs[0]!.state === 'completed') {
-    console.info(
-      `[job-handler] idempotency skip materialId=${materialId} hash=${idempotencyHash} — already completed`,
+    logger.info(
+      { materialId, idempotencyHash },
+      '[job-handler] idempotency skip — already completed',
     );
     return;
   }
@@ -175,9 +177,15 @@ export async function processWikiCompileJob(
       .where(eq(schema.jobs.id, existingJobs[0]!.id));
   }
 
-  console.info(
-    `[job-handler] done materialId=${materialId} notes=${noteCount} hash=${idempotencyHash} ` +
-    `steps=${agentResult.stepsUsed} tokens=${agentResult.totalInputTokens + agentResult.totalOutputTokens}`,
+  logger.info(
+    {
+      materialId,
+      idempotencyHash,
+      notes: noteCount,
+      steps: agentResult.stepsUsed,
+      tokens: agentResult.totalInputTokens + agentResult.totalOutputTokens,
+    },
+    '[job-handler] done',
   );
 }
 
