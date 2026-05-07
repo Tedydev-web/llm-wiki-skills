@@ -7,9 +7,15 @@
  *
  * See: LICENSE-NOTICE.md, ADR 009 (AGPL obligation documentation)
  *
- * Public API: extractPdfText(buf: Buffer): Promise<string>
+ * Public API:
+ *   extractPdfText(buf: Buffer): Promise<string>
+ *   extractPdfImages(buf: Buffer): Promise<ExtractImagesResult>
  * All other MuPDF internals are private to this module.
  */
+
+// Re-export image extraction (AGPL boundary — stays inside this package)
+export { extractPdfImages } from './extract-images.js';
+export type { ExtractedImage, ExtractImagesResult, ImageExtractionError } from './extract-images.js';
 
 // Dynamic import defers AGPL surface until first call.
 // This also prevents bundlers from statically inlining mupdf into non-AGPL packages.

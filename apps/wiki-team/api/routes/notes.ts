@@ -14,7 +14,7 @@
  */
 
 import { Hono } from 'hono';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql, ilike } from 'drizzle-orm';
 import type { AuthContextEnv } from '../middleware/auth.js';
 import { requireAuth } from '../../auth/auth-context.js';
 import { rbacGuard } from '../middleware/rbac-guard.js';
@@ -22,14 +22,64 @@ import { auditLog } from '../middleware/audit-log.js';
 import { errorResponse } from '../middleware/error-handler.js';
 import { parseIfMatch, versionMismatchResponse, buildETag } from '../concurrency/if-match.js';
 import { getDb, schema } from '../../storage/db.js';
+import { searchNotes, escapeILike } from '../../services/embedding-router.js';
 
 export function buildNotesRouter(): Hono<AuthContextEnv> {
   const app = new Hono<AuthContextEnv>();
 
   // GET /api/workspaces/:id/notes
+  // Query params:
+  //   ?q=<text>            — search query (keyword by default; semantic when mode=semantic)
+  //   ?mode=semantic|keyword — default keyword when q is present
   app.get('/workspaces/:id/notes', async (c) => {
     requireAuth(c);
+    const wid   = c.req.param('id');
+    const q     = c.req.query('q')?.trim() ?? '';
+    const mode  = c.req.query('mode') ?? 'keyword';
+
+    // Semantic search path — delegates to embedding-router + pgvector cosine distance
+    if (q && mode === 'semantic') {
+      try {
+        const results = await searchNotes(wid, q, 25);
+        return c.json({ notes: results, mode: 'semantic' });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg === 'EMBEDDING_PROVIDER_NOT_CONFIGURED') {
+          return errorResponse(c, 422, 'EMBEDDING_PROVIDER_NOT_CONFIGURED',
+            'No embedding provider configured for this workspace. Go to Settings to configure one.');
+        }
+        throw err;
+      }
+    }
+
     const db = getDb();
+
+    // Keyword search path — ILIKE with injection guard on title + content
+    if (q) {
+      const escaped = escapeILike(q);
+      const rows = await db
+        .select({
+          id: schema.notes.id,
+          slug: schema.notes.slug,
+          title: schema.notes.title,
+          taxonomy: schema.notes.taxonomy,
+          version: schema.notes.version,
+          updatedAt: schema.notes.updatedAt,
+          kbId: schema.notes.kbId,
+        })
+        .from(schema.notes)
+        .where(
+          and(
+            eq(schema.notes.workspaceId, wid),
+            isNull(schema.notes.deletedAt),
+            ilike(schema.notes.title, `%${escaped}%`),
+          ),
+        )
+        .limit(100);
+      return c.json({ notes: rows, mode: 'keyword' });
+    }
+
+    // Default — list all notes (no search)
     const rows = await db
       .select({
         id: schema.notes.id,
@@ -43,7 +93,7 @@ export function buildNotesRouter(): Hono<AuthContextEnv> {
       .from(schema.notes)
       .where(
         and(
-          eq(schema.notes.workspaceId, c.req.param('id')),
+          eq(schema.notes.workspaceId, wid),
           isNull(schema.notes.deletedAt),
         ),
       );

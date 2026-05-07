@@ -8,7 +8,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { logger } from '../../lib/logger.js';
@@ -20,6 +20,7 @@ import { extractFromPdf } from './extractors/pdf-extractor.js';
 import { extractFromDocx } from './extractors/docx-extractor.js';
 import { extractFromUrl } from './extractors/url-extractor.js';
 import { rebuildCatalogWithMutex } from './catalog-rebuild.js';
+import { enqueueVisionCaptionJobs } from '../vision-captions/enqueue-vision-jobs.js';
 import type { AuthContext } from '../../auth/auth-context.js';
 
 // ---------------------------------------------------------------------------
@@ -106,7 +107,7 @@ export async function processWikiCompileJob(
   // ---- Extract text ----
   let materialText: string;
   try {
-    materialText = await extractMaterialText(material);
+    materialText = await extractMaterialText(material, materialId);
   } catch (err) {
     const reason = `extract-failed: ${err instanceof Error ? err.message : String(err)}`;
     await db
@@ -187,13 +188,20 @@ export async function processWikiCompileJob(
     },
     '[job-handler] done',
   );
+
+  // ---- Emit material.compiled event: enqueue vision sub-jobs (best-effort) ----
+  // Vision runs on a separate BullMQ queue (vision-captions); compile is already
+  // marked completed above. Any vision failure is fully isolated.
+  await maybeEnqueueVisionJobs(workspaceId, materialId, material, redis);
 }
 
 // ---------------------------------------------------------------------------
 // extractMaterialText — route to correct extractor by mime/storage key
+// materialId passed to PDF extractor to trigger image extraction in worker process.
 
 async function extractMaterialText(
   material: typeof schema.materials.$inferSelect,
+  materialId: string,
 ): Promise<string> {
   if (material.mimeType === 'text/html' || material.storageKey.startsWith('url:')) {
     const url = material.storageKey.replace(/^url:/, '');
@@ -213,8 +221,95 @@ async function extractMaterialText(
     return text;
   }
 
-  const { text } = await extractFromPdf(buf);
+  // Pass materialId so PDF extractor also stores images to material_images table
+  const { text } = await extractFromPdf(buf, materialId);
   return text;
+}
+
+// ---------------------------------------------------------------------------
+// maybeEnqueueVisionJobs — post-compile best-effort vision queue dispatch
+
+/**
+ * Check workspace vision_enabled flag; if true, fetch pending material_images
+ * rows and enqueue one BullMQ sub-job per image on the vision-captions queue.
+ *
+ * VISION_ENABLED_DEFAULT=false — opt-in per workspace via provider_settings
+ * capability='vision' row existence acts as the enable flag (ADR 015).
+ *
+ * Never throws — vision failure must not affect compile outcome.
+ */
+async function maybeEnqueueVisionJobs(
+  workspaceId: string,
+  materialId: string,
+  material: typeof schema.materials.$inferSelect,
+  redis: Redis,
+): Promise<void> {
+  // VISION_ENABLED_DEFAULT=false — skip unless explicitly enabled
+  const visionEnabledDefault = process.env['VISION_ENABLED_DEFAULT'] === 'true';
+
+  try {
+    const db = getDb();
+
+    // Check if workspace has an active vision provider_settings row
+    const visionProviderRows = await db
+      .select({ id: schema.providerSettings.id })
+      .from(schema.providerSettings)
+      .where(
+        and(
+          eq(schema.providerSettings.workspaceId, workspaceId),
+          eq(schema.providerSettings.capability, 'vision'),
+        ),
+      )
+      .limit(1);
+
+    const visionEnabled = visionProviderRows.length > 0 || visionEnabledDefault;
+    if (!visionEnabled) {
+      logger.debug({ materialId, workspaceId }, '[job-handler] vision not enabled — skipping');
+      return;
+    }
+
+    // Fetch pending material_images rows for this material
+    const pendingImages = await db
+      .select({
+        rowId: schema.materialImages.id,
+        storageKey: schema.materialImages.storageKey,
+        mimeType: schema.materialImages.mimeType,
+        sizeBytes: schema.materialImages.sizeBytes,
+        pageNumber: schema.materialImages.pageNumber,
+        imageIndex: schema.materialImages.imageIndex,
+      })
+      .from(schema.materialImages)
+      .where(
+        and(
+          eq(schema.materialImages.materialId, materialId),
+          eq(schema.materialImages.status, 'pending'),
+        ),
+      );
+
+    if (pendingImages.length === 0) {
+      logger.debug({ materialId }, '[job-handler] no pending images — vision queue skipped');
+      return;
+    }
+
+    // Map to ImageManifestEntry shape required by enqueueVisionCaptionJobs
+    const entries = pendingImages.map((img) => ({
+      rowId: img.rowId,
+      storageKey: img.storageKey,
+      mimeType: img.mimeType,
+      sizeBytes: img.sizeBytes,
+      pageNumber: img.pageNumber ?? 0,
+      imageIndex: img.imageIndex,
+    }));
+
+    const enqueued = await enqueueVisionCaptionJobs(entries, materialId, workspaceId, redis);
+    logger.info({ materialId, enqueued }, '[job-handler] material.compiled — vision jobs dispatched');
+  } catch (err) {
+    // Non-fatal: compile is already completed; vision is best-effort
+    logger.error(
+      { materialId, err: err instanceof Error ? err.message : String(err) },
+      '[job-handler] vision enqueue failed (non-fatal)',
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

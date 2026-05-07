@@ -120,6 +120,21 @@ export interface NoteKind {
   createdAt: string;
 }
 
+export interface Group {
+  id: string;
+  slug: string;
+  displayName: string;
+  createdAt: string;
+}
+
+export interface GroupNoteKind {
+  id: string;
+  groupId: string;
+  noteKindId: string;
+  noteKindSlug: string;
+  createdAt: string;
+}
+
 export interface McpTokenMetadata {
   id: string;
   prefixLookup: string;
@@ -387,6 +402,55 @@ export const api = {
 
     delete: async (workspaceId: string, slug: string): Promise<void> => {
       await apiFetch<void>(`/api/workspaces/${workspaceId}/note-kinds/${slug}`, { method: 'DELETE' });
+    },
+  },
+
+  groups: {
+    list: async (workspaceId: string): Promise<Group[]> => {
+      const { data } = await apiFetch<{ groups: Group[] }>(`/api/workspaces/${workspaceId}/groups`);
+      return data.groups;
+    },
+
+    create: async (workspaceId: string, input: { slug: string; displayName: string }): Promise<Group> => {
+      const { data } = await apiFetch<{ group: Group }>(`/api/workspaces/${workspaceId}/groups`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      return data.group;
+    },
+
+    update: async (workspaceId: string, slug: string, displayName: string): Promise<Group> => {
+      const { data } = await apiFetch<{ group: Group }>(`/api/workspaces/${workspaceId}/groups/${slug}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ displayName }),
+      });
+      return data.group;
+    },
+
+    delete: async (workspaceId: string, slug: string): Promise<void> => {
+      await apiFetch<void>(`/api/workspaces/${workspaceId}/groups/${slug}`, { method: 'DELETE' });
+    },
+
+    listNoteKinds: async (workspaceId: string, groupSlug: string): Promise<GroupNoteKind[]> => {
+      const { data } = await apiFetch<{ noteKinds: GroupNoteKind[] }>(
+        `/api/workspaces/${workspaceId}/groups/${groupSlug}/note-kinds`,
+      );
+      return data.noteKinds;
+    },
+
+    assignNoteKind: async (workspaceId: string, groupSlug: string, noteKindSlug: string): Promise<GroupNoteKind> => {
+      const { data } = await apiFetch<{ noteKind: GroupNoteKind }>(
+        `/api/workspaces/${workspaceId}/groups/${groupSlug}/note-kinds`,
+        { method: 'POST', body: JSON.stringify({ noteKindSlug }) },
+      );
+      return data.noteKind;
+    },
+
+    removeNoteKind: async (workspaceId: string, groupSlug: string, kindSlug: string): Promise<void> => {
+      await apiFetch<void>(
+        `/api/workspaces/${workspaceId}/groups/${groupSlug}/note-kinds/${kindSlug}`,
+        { method: 'DELETE' },
+      );
     },
   },
 

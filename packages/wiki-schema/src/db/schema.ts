@@ -428,6 +428,26 @@ export const jobs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// 13b. group_note_kinds — assigns allowed note kind scope to groups (P08)
+// Groups WITHOUT rows: see all note kinds (no restriction).
+// Groups WITH rows: members see ONLY notes whose taxonomy IN assigned kind slugs.
+
+export const groupNoteKinds = pgTable(
+  'group_note_kinds',
+  {
+    id:         pk(),
+    groupId:    uuid('group_id').notNull(),      // FK → groups.id (ON DELETE CASCADE)
+    noteKindId: uuid('note_kind_id').notNull(),  // FK → note_kinds.id (ON DELETE CASCADE)
+    createdAt:  createdAt(),
+  },
+  (t) => ({
+    uniqGroupKind: uniqueIndex('group_note_kinds_uniq').on(t.groupId, t.noteKindId),
+    groupIdx:      index('group_note_kinds_group_idx').on(t.groupId),
+    noteKindIdx:   index('group_note_kinds_note_kind_idx').on(t.noteKindId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // 14. audit_events — immutable append-only audit trail (renamed from audit_log)
 
 export const auditEvents = pgTable(
@@ -455,11 +475,60 @@ export const auditEvents = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// 15. material_images — per-image rows extracted from materials; captioned by vision queue.
+//     Upsert-safe: UNIQUE (material_id, page_number, image_index) — recompile-safe.
+//     Status: pending → captioned | skipped | failed
+//     ADR 015 §Anti-trace: caption field uses 'caption' (not the forbidden upstream attribute name).
+
+export const materialImages = pgTable(
+  'material_images',
+  {
+    id:               pk(),
+    materialId:       uuid('material_id').notNull(),        // FK → materials.id ON DELETE CASCADE
+    /** 0-based page index in source document */
+    pageNumber:       integer('page_number').notNull().default(0),
+    /** 0-based index of image within the page */
+    imageIndex:       integer('image_index').notNull().default(0),
+    /** Byte offset of image in source buffer (approximate; stable ordering key) */
+    imageOffsetBytes: integer('image_offset_bytes').notNull().default(0),
+    /** MIME type: image/jpeg | image/png | image/webp | image/gif */
+    mimeType:         varchar('mime_type', { length: 32 }).notNull(),
+    /** MinIO storage key for raw image bytes */
+    storageKey:       text('storage_key').notNull(),
+    /** Raw image size in bytes */
+    sizeBytes:        integer('size_bytes').notNull(),
+    /** Caption text — null until vision job completes. ADR 015: uses 'caption' (not the upstream attribute name). */
+    caption:          text('caption'),
+    /** Provider: 'openai' | 'google' | 'anthropic' */
+    captionProvider:  varchar('caption_provider', { length: 16 }),
+    /** Decimal string: cost of caption call in USD */
+    captionCostUsd:   varchar('caption_cost_usd', { length: 10 }),
+    /** pending | captioned | skipped | failed */
+    status:           varchar('status', { length: 16 }).notNull().default('pending'),
+    /** Populated for status='skipped': 'cost_cap_hit' | 'size_cap_exceeded' */
+    skippedReason:    varchar('skipped_reason', { length: 64 }),
+    /** Populated for status='failed' */
+    failedReason:     text('failed_reason'),
+    createdAt:        createdAt(),
+    updatedAt:        updatedAt(),
+  },
+  (t) => ({
+    /** Upsert-safe: recompile does not create duplicate rows */
+    matPageImgUidx: uniqueIndex('material_images_mat_page_img_uidx').on(
+      t.materialId, t.pageNumber, t.imageIndex,
+    ),
+    materialIdIdx:  index('material_images_material_id_idx').on(t.materialId),
+    statusIdx:      index('material_images_status_idx').on(t.status),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // Export all tables for Drizzle Kit and db.ts
 
 export type Schema = {
   users: typeof users;
   groups: typeof groups;
+  groupNoteKinds: typeof groupNoteKinds;
   roleDefinitions: typeof roleDefinitions;
   workspaces: typeof workspaces;
   members: typeof members;
@@ -472,4 +541,5 @@ export type Schema = {
   mcpTokens: typeof mcpTokens;
   jobs: typeof jobs;
   auditEvents: typeof auditEvents;
+  materialImages: typeof materialImages;
 };

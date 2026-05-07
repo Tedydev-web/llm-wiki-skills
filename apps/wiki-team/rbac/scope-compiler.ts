@@ -23,7 +23,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { AuthContext } from '../auth/auth-context.js';
 import { hasGrant } from './policy-evaluator.js';
-import { schema } from '../storage/db.js';
+import { getDb, schema } from '../storage/db.js';
 
 // ---------------------------------------------------------------------------
 // buildAccessClause — materials: workspace_materials EXISTS join
@@ -87,6 +87,41 @@ function buildSharedTagClause(tags: string[]): SQL {
 }
 
 // ---------------------------------------------------------------------------
+// buildGroupKindFilter — notes: restrict by group_note_kinds when user has groups
+//
+// Loads user's group(s) from users.group_id, then loads group_note_kinds for
+// those groups. If the group has explicit kind assignments, restricts notes
+// WHERE taxonomy IN (allowed slugs). If no assignments: no restriction (legacy).
+//
+// Returns null when no filtering should be applied (user has no groups, or
+// group has no kind rows assigned → unrestricted legacy behavior).
+
+async function loadGroupAllowedKinds(userId: string): Promise<string[] | null> {
+  const db = getDb();
+
+  // Resolve user's groupId (users.group_id)
+  const userRows = await db.execute(
+    sql`SELECT group_id FROM users WHERE id = ${userId} AND deleted_at IS NULL LIMIT 1`,
+  );
+  const userRow = (userRows as unknown as Array<{ group_id: string | null }>)[0];
+  if (!userRow?.group_id) return null; // user has no group → no filtering
+
+  const groupId = userRow.group_id;
+
+  // Load note kind slugs assigned to this group
+  const kindRows = await db.execute(
+    sql`SELECT nk.slug
+        FROM group_note_kinds gnk
+        JOIN note_kinds nk ON nk.id = gnk.note_kind_id
+        WHERE gnk.group_id = ${groupId}
+        ORDER BY nk.slug`,
+  );
+  const slugs = (kindRows as unknown as Array<{ slug: string }>).map((r) => r.slug);
+  if (slugs.length === 0) return null; // group has no kind restrictions → no filtering
+  return slugs;
+}
+
+// ---------------------------------------------------------------------------
 // compileScopeFilter — public entry point
 
 /**
@@ -95,9 +130,12 @@ function buildSharedTagClause(tags: string[]): SQL {
  * @param ctx    AuthContext with pre-loaded permissions + membershipTier
  * @param table  'materials' or 'notes' — determines which schema + join pattern
  *
- * Usage:
+ * Usage (sync):
  *   const filter = compileScopeFilter(ctx, 'materials');
  *   const rows = await db.select().from(materials).where(filter);
+ *
+ * For notes with group-kind filtering, prefer compileScopeFilterAsync which
+ * returns a richer SQL fragment including taxonomy restriction.
  */
 export function compileScopeFilter(
   ctx: AuthContext,
@@ -131,6 +169,47 @@ export function compileScopeFilter(
     return buildAccessClause(ctx.userId);
   }
 
-  // table === 'notes'
+  // table === 'notes' — sync fallback (no group-kind filtering; use async variant when possible)
   return buildNotesAccessClause(ctx.userId);
+}
+
+/**
+ * Async variant of compileScopeFilter for 'notes' table.
+ * Extends the base workspace-membership filter with group_note_kinds restriction:
+ *   - User in a group WITH kind assignments → adds AND taxonomy IN (allowed slugs)
+ *   - User in a group WITHOUT kind assignments → no extra filter (legacy behavior)
+ *   - User with no group → no extra filter
+ *
+ * Usage:
+ *   const filter = await compileScopeFilterAsync(ctx, 'notes');
+ *   const rows = await db.select().from(notes).where(filter);
+ */
+export async function compileScopeFilterAsync(
+  ctx: AuthContext,
+  table: 'materials' | 'notes',
+): Promise<SQL> {
+  // Admin and view.all bypass everything
+  if (ctx.membershipTier === 'global-admin') return sql`TRUE`;
+  if (hasGrant(ctx, 'kb', 'view', 'all') || hasGrant(ctx, 'page', 'view', 'all')) return sql`TRUE`;
+
+  // Materials path — no group-kind filtering (group kind scope applies to notes only)
+  if (table === 'materials') {
+    return compileScopeFilter(ctx, 'materials');
+  }
+
+  // Notes path — apply workspace membership + group-kind filter
+  const baseClause = buildNotesAccessClause(ctx.userId);
+  const allowedKinds = await loadGroupAllowedKinds(ctx.userId);
+
+  if (!allowedKinds) {
+    // No group or no kind assignments → standard workspace membership only
+    return baseClause;
+  }
+
+  // Group has explicit kind restrictions: add taxonomy IN (...) clause
+  const kindList = sql.join(
+    allowedKinds.map((k) => sql`${k}`),
+    sql`, `,
+  );
+  return sql`${baseClause} AND ${schema.notes.taxonomy} IN (${kindList})`;
 }
