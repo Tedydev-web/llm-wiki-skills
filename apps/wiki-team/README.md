@@ -1,6 +1,23 @@
-# wiki-team (v2.0)
+# wiki-team (v2.1)
 
 Self-hosted multi-user team wiki server. Upload documents, compile them into a structured linked knowledge base, and query from Claude Desktop via MCP.
+
+## What's new in v2.1
+
+- **Multi-provider AI** — swap LLM (Anthropic / OpenAI / Google), embedding (OpenAI 1536d / Google 768d / Voyage 1024d), and vision (OpenAI / Google / Anthropic) providers from admin UI without code changes. 9-cell adapter matrix.
+- **Provider Settings UI** — store provider API keys encrypted (HKDF + AES-GCM-256) in the database; rotate without redeploy.
+- **Knowledge-type taxonomy** — admin CRUD for note kinds with color labels. 4 system defaults (fact / analysis / procedure / reference) preserved; add custom kinds freely. 2 new MCP tools: `list_knowledge_types`, `get_knowledge_type_docs`.
+- **Image extraction + vision captions** — PDF images extracted during ingestion; vision captions generated via configured vision provider (async BullMQ sub-jobs; never blocks compile). Per-material cap ($0.50 default) + per-workspace daily cap. Opt-in per workspace (default OFF).
+- **Semantic search** — embedding write-path wired; multi-dimension router (768d/1024d/1536d); ivfflat auto-created at ≥1000 rows per dimension. Embedding rebuild job with mid-switch abort + pre-flight cost estimate. Search UI in admin frontend.
+- **Three-panel wiki browser** — page tree | content | backlinks/outlinks. Keyboard nav: `j`/`k` (prev/next), `b` (backlinks), `Esc` (close), `/` (search focus).
+- **Department admin UI** — groups CRUD + `group_note_kinds` RBAC scope assignment. Scope-compiler extended; per-group note-kind visibility without code changes.
+- **Admin bootstrap** — `DEFAULT_ADMIN_EMAIL` + `DEFAULT_ADMIN_PASSWORD` env vars create first admin on boot; password cleared from `process.env` after bootstrap; idempotent.
+- **Email-password auth** — Better Auth email-password adapter (minPasswordLength 12; accountLinking off) complements existing Google + GitHub OAuth.
+- **Source outline + page-range MCP tools** — hierarchical outline from PDF TOC / heading scan; extract specific page ranges. MCP tool count: 8 → 12 (full parity with reference implementation).
+- **Structured logging** — pino replaces all `console.*` in server-side code (38 → 0). 14 redact paths for secrets/PII. Optional Sentry init.
+- **Audit cleanup cron** — 12-month retention; small-batch DELETE; self-audit carve-out.
+- **Test infrastructure** — 5 middleware unit tests; drizzle-zod single-source-of-truth CI assertion; `@vitest/coverage-v8` thresholds (rbac ≥ 70%, jobs/mcp-host/api ≥ 60%). 261 total tests.
+- **7 new migrations** (0005–0011): taxonomy color, provider_settings, material_images, audit cleanup metadata, embedding multi-dim, group_note_kinds.
 
 **License:** PolyForm Noncommercial 1.0.0 — non-commercial self-hosted use only. See [LICENSE-NOTICE.md](../../LICENSE-NOTICE.md).
 

@@ -19,7 +19,7 @@ import { NoteContent } from '@/components/wiki/note-content';
 import { BacklinksPanel } from '@/components/wiki/backlinks-panel';
 import { OutlinksPanel } from '@/components/wiki/outlinks-panel';
 import { KeyboardNav } from '@/components/wiki/keyboard-nav';
-import type { NoteSummary } from '@/lib/api-client';
+import type { NoteSummary, Note } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -85,6 +85,7 @@ export function WikiBrowserLayout({ workspaceSlug, initialNoteSlug = null }: Wik
 
   const [selectedSlug, setSelectedSlug]   = useState<string | null>(initialNoteSlug);
   const [flatNotes, setFlatNotes]         = useState<NoteSummary[]>([]);
+  const [currentNote, setCurrentNote]     = useState<Note | null>(null);
   const [backlinksOpen, setBacklinksOpen] = useState(true);
   const [treeWidth, setTreeWidth]         = useState(DEFAULT_TREE);
   const [rightWidth, setRightWidth]       = useState(DEFAULT_RIGHT);
@@ -115,8 +116,6 @@ export function WikiBrowserLayout({ workspaceSlug, initialNoteSlug = null }: Wik
     router.replace(`/workspaces/${workspaceSlug}/wiki/${noteSlug}`, { scroll: false });
   }, [router, workspaceSlug]);
 
-  const currentNote = flatNotes.find((n) => n.slug === selectedSlug) ?? null;
-
   return (
     <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-md border bg-background">
       <KeyboardNav
@@ -146,6 +145,7 @@ export function WikiBrowserLayout({ workspaceSlug, initialNoteSlug = null }: Wik
           workspaceSlug={workspaceSlug}
           noteSlug={selectedSlug}
           onWikilinkNavigate={handleSelect}
+          onNoteLoaded={setCurrentNote}
         />
       </div>
 
@@ -160,7 +160,7 @@ export function WikiBrowserLayout({ workspaceSlug, initialNoteSlug = null }: Wik
               onNavigate={handleSelect}
             />
             <OutlinksPanel
-              noteLinks={currentNote ? [] : []}
+              noteLinks={currentNote?.links ?? []}
               allNotes={flatNotes}
               onNavigate={handleSelect}
             />

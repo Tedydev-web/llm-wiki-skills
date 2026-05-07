@@ -15,6 +15,121 @@ For v1.2 personal-mode history (frozen), see [`apps/wiki-skills/CHANGELOG-pre-v2
 
 ---
 
+## [2.1.0] — 2026-05-07
+
+**Feature release.** Closes 9 user-facing parity gaps + 12 v2.1 tech-debt items vs v2.0.1. Feature catalog: 81% → 93%; workflow parity vs arkon: 56% → 85%. Clean-room hygiene preserved (Mode A — no source read; ADR 009 holds). Anti-trace: 0 hits across 152 v2.1 files.
+
+> `directory.lookup` ≡ arkon's `find_contacts` tool (same surface, distinct naming per anti-trace).
+> Graph visualization deferred v2.2; backlinks/outlinks panel ships as substitute.
+
+### Added
+
+#### ADRs
+- **ADR 013**: Multi-provider LLM/embedding/vision abstraction (9-cell adapter matrix: 3 LLM × 3 embed × 3 vision)
+- **ADR 014**: Knowledge-type taxonomy CRUD with color schema + admin-extensible kinds
+- **ADR 015**: Image extraction + vision captions (async BullMQ sub-jobs; opt-in; cost-capped)
+
+#### Multi-provider AI (P01)
+- Multi-provider LLM/embedding/vision: 9-cell adapter matrix (3 LLM × 3 embed × 3 vision)
+  - Embedding: OpenAI `text-embedding-3-small` (1536d) / Google `text-embedding-004` (768d) / Voyage AI `voyage-3-large` (1024d)
+  - LLM: Anthropic `claude-sonnet-4-5` / OpenAI `gpt-4o` / Google `gemini-2.5-pro`
+  - Vision: OpenAI `gpt-4o-vision` / Google `gemini-vision` / Anthropic claude-vision (LLM + image blocks)
+- Provider Settings admin UI with HKDF + AES-GCM-256 encrypted API keys (per-row salt; rotation epoch)
+
+#### Knowledge-type taxonomy (P02)
+- Knowledge-type taxonomy CRUD admin UI (color schema; 4 ADR 010 system defaults preserved: fact/analysis/procedure/reference)
+- 2 new MCP tools: `list_knowledge_types` + `get_knowledge_type_docs`
+- Admins add custom knowledge kinds with color labels without touching code
+
+#### Image extraction + vision captions (P03)
+- Image extraction during PDF ingestion via separate BullMQ queue (per-image sub-jobs; never blocks compile)
+- Vision caption generation on extracted images; captions stored + embedded
+- Per-material vision cost cap ($0.50 default) + per-workspace daily cap
+- Vision opt-in default OFF (PII disclosure flag); opt-in per workspace
+
+#### Embedding write-path + search (P04)
+- Embedding write-path wired with multi-dim router (768d/1024d/1536d columns)
+- Embedding rebuild job: mid-switch abort + pre-flight cost estimate
+- Semantic search admin UI (embedding results surfaced in frontend)
+- ivfflat auto-create per dimension (768/1024/1536) at ≥1000-row threshold
+
+#### Three-panel wiki browser (P05)
+- Three-panel wiki browser FE: page tree | content | backlinks/outlinks panel
+- Keyboard navigation: `j`/`k` (prev/next note), `b` (backlinks toggle), `Esc` (close panel), `/` (search focus)
+- Graph visualization deferred to v2.2 (backlinks/outlinks panel is functional substitute)
+
+#### DEFAULT_ADMIN_EMAIL bootstrap (P06)
+- `DEFAULT_ADMIN_EMAIL` + `DEFAULT_ADMIN_PASSWORD` env-based admin bootstrap on first boot
+- `WIKI_ENV` env var (`staging`/`prod`) for environment distinction
+- Password deleted from `process.env` after first-boot bootstrap (security hygiene S-2)
+- Idempotent: no-op on subsequent boots if admin already exists
+
+#### Source outline + MCP expansion (P07)
+- Source outline tree MCP tool: hierarchical document outline from PDF TOC / heading scan
+- Page-range fetch MCP tool: extract specific page ranges from stored materials
+- MCP tool count: 8 → 12 (= arkon parity; 4 new tools across P02 + P07)
+
+#### Department admin UI (P08)
+- Department admin UI: groups CRUD + group_note_kinds RBAC scope assignment
+- `group_note_kinds` scope filter extends `compileScopeFilter` for per-group note-kind visibility
+- Department-level taxonomy assignment without code changes
+
+#### Structured logger + observability (P09)
+- Structured logger (pino) replaces all `console.*` calls in `apps/wiki-team/*` (38 → 0)
+- 14 redact paths: `*.api_key`, `*.api_key_plaintext`, `*.password`, `*.secret`, and 10 more
+- Optional Sentry init (Bun-compat spike; log-only fallback if init fails)
+- Audit log retention auto-cleanup cron: 12-month retention; small-batch DELETE; self-audit row carve-out
+
+#### Better Auth + email-password (P10)
+- Better Auth email-password adapter: `minPasswordLength 12`; `accountLinking` off
+- OAuth email collision warning + no privilege escalation (S-6)
+
+#### Test infrastructure expansion (P11)
+- 5 middleware unit tests: auth, rbac-guard, audit-log, error-handler, if-match
+- drizzle-zod single-source-of-truth CI assertion (12 tables covered)
+- `@vitest/coverage-v8` wired with thresholds: rbac ≥ 70%, jobs ≥ 60%, mcp-host ≥ 60%, api ≥ 60%
+- 7 new migrations (0005–0011): taxonomy color, provider_settings, material_images, audit cleanup metadata, embedding multi-dim, group_note_kinds (full sequence locked W1)
+
+### Changed
+
+- `console.*` → pino structured logger throughout server-side (`apps/wiki-team/*`): 38 → 0 calls
+- `material.read` MCP tool: text extraction per MIME type (v2.0.1 fix preserved + vision caption append)
+- Schema source-of-truth: Drizzle tables → drizzle-zod base → hand refinements (CI-enforced via assertion)
+- pgvector column upgraded: single 768d `notes.embedding` → multi-dim router (768/1024/1536 columns)
+
+### Fixed
+
+- (none — additive release)
+
+### Security
+
+- HKDF + AES-GCM-256 provider key encryption (per-row HKDF salt; rotation epoch; keys never stored plaintext)
+- `DEFAULT_ADMIN_PASSWORD` deleted from `process.env` after bootstrap (S-2)
+- OAuth email collision: warning logged + no privilege escalation (S-6)
+- Audit log: `actor_email_hmac` (HMAC-SHA256; raw email PII never stored)
+- Vision opt-in default OFF globally (PII disclosure risk; opt-in per workspace)
+- 14-path pino redact list: `*.api_key`, `*.api_key_plaintext`, `*.secret`, `*.password`, etc.
+
+### Migration
+
+- Run `bun run db:migrate` to apply migrations 0005–0011 (7 new migrations)
+- Existing 768d Gemini embeddings preserved in `notes.embedding`; new materials use configured provider + correct dim column
+- `DEFAULT_ADMIN_EMAIL` triggers only on first boot; idempotent thereafter; clears from process env after bootstrap
+- New required env vars: `BETTER_AUTH_SECRET` (was optional placeholder), `WIKI_ENV` (staging/prod), `HKDF_SALT` (provider key encryption); see `docs/operations.md`
+- Production logs are JSON; dev logs pretty-print (was stringified `console.log`)
+
+### Notes
+
+- v2.1 closes 9 user-facing parity gaps + 12 v2.1 tech-debt items vs v2.0.1
+- Honest parity: 81% → 93% feature catalog / 56% → 85% workflow vs arkon
+- Clean-room hygiene preserved (Mode A — no source read; ADR 009 holds)
+- Anti-trace audit: 0 hits across 152 v2.1 files
+- 222 unit/integration tests (post-W3) + 39 W4 tests = 261 total
+- License: PolyForm-NC inherited; AGPL boundary at `packages/wiki-pdf-extract`
+- Out of scope (deferred v2.2): graph viz, real-time websocket, drag-drop upload, full mobile UX, single-binary release, audit log viewer UI, K8s manifests
+
+---
+
 ## [2.0.1] — 2026-05-06
 
 **Patch release** addressing top-3 HIGH tech-debt items from the v2.0.0 release audit (`plans/reports/tech-debt-audit-260506-1646-v2-0-release.md`).

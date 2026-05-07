@@ -38,9 +38,12 @@ interface NoteContentProps {
   workspaceSlug: string;
   noteSlug: string | null;
   onWikilinkNavigate: (slug: string) => void;
+  /** Called after a note is successfully fetched — used by parent (WikiBrowserLayout)
+   *  to surface note.links[] to OutlinksPanel without prop-drilling through NoteContent. */
+  onNoteLoaded?: (note: Note) => void;
 }
 
-export function NoteContent({ workspaceSlug, noteSlug, onWikilinkNavigate }: NoteContentProps) {
+export function NoteContent({ workspaceSlug, noteSlug, onWikilinkNavigate, onNoteLoaded }: NoteContentProps) {
   const [note, setNote]         = useState<Note | null>(null);
   const [etag, setEtag]         = useState<string | undefined>();
   const [loading, setLoading]   = useState(false);
@@ -53,12 +56,14 @@ export function NoteContent({ workspaceSlug, noteSlug, onWikilinkNavigate }: Not
       const { note: n, etag: tag } = await api.notes.get(workspaceSlug, noteSlug);
       setNote(n);
       setEtag(tag);
+      // Surface note to parent so OutlinksPanel can receive note.links[]
+      if (onNoteLoaded) onNoteLoaded(n);
     } catch (err) {
       toast({ title: 'Failed to load note', description: (err as WikiTeamApiError).message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [workspaceSlug, noteSlug]);
+  }, [workspaceSlug, noteSlug, onNoteLoaded]);
 
   useEffect(() => { loadNote(); }, [loadNote]);
 

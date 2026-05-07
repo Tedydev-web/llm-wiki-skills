@@ -50,6 +50,21 @@ jobs:
           SKIP_DB_TESTS: "1"
           NODE_ENV: test
 
+      - name: Run unit tests with coverage
+        run: bun run test:wiki-team:coverage
+        env:
+          SKIP_DB_TESTS: "1"
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-unit
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 7
+
   integration:
     name: "Integration tests (Postgres + Redis + MinIO)"
     runs-on: ubuntu-latest
