@@ -54,6 +54,8 @@ import { buildWorkspaceInfoTool } from './tools/workspace-info.js';
 import { buildNoteCrossrefsTool } from './tools/note-crossrefs.js';
 import { buildListKnowledgeTypesTool } from './tools/list-knowledge-types.js';
 import { buildGetKnowledgeTypeDocsTool } from './tools/get-knowledge-type-docs.js';
+import { buildGetSourceOutlineTool } from './tools/get-source-outline.js';
+import { buildGetSourcePagesTool } from './tools/get-source-pages.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -251,6 +253,8 @@ const ALL_TOOL_NAMES = [
   'note.crossrefs',
   'wiki.list_knowledge_types',
   'wiki.get_knowledge_type_docs',
+  'material.get_source_outline',
+  'material.get_source_pages',
 ] as const;
 
 // Descriptions mirrored from tool files — kept in sync manually (YAGNI: no codegen for 8 tools)
@@ -265,6 +269,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   'note.crossrefs': 'List outbound cross-references (wikilinks) from a note. Use to traverse the knowledge graph.',
   'wiki.list_knowledge_types': 'List all NoteKind taxonomy entries available in the workspace. Returns slug, label, color, and description for each kind.',
   'wiki.get_knowledge_type_docs': 'Get notes belonging to a specific NoteKind taxonomy slug in a workspace. Supports offset-based pagination via limit and offset parameters.',
+  'material.get_source_outline': 'Extract a heading-based outline tree from a source material. Returns nested OutlineNode entries with level, text, and charOffset. Use before fetching page ranges.',
+  'material.get_source_pages': 'Fetch text for specific pages of a source material. Supports "5", "5-7", "5,7,9" page range formats. Max 100 pages per request. Non-PDF materials are treated as single-page.',
 };
 
 // Minimal JSON Schema descriptors for ListTools (full validation happens in tool handlers via Zod)
@@ -279,6 +285,8 @@ const TOOL_SCHEMAS: Record<string, object> = {
   'note.crossrefs': { type: 'object', properties: { slug: { type: 'string' }, workspaceId: { type: 'string' } }, required: ['slug', 'workspaceId'] },
   'wiki.list_knowledge_types': { type: 'object', properties: { workspaceId: { type: 'string' } }, required: ['workspaceId'] },
   'wiki.get_knowledge_type_docs': { type: 'object', properties: { workspaceId: { type: 'string' }, kindSlug: { type: 'string' }, limit: { type: 'integer' }, offset: { type: 'integer' } }, required: ['workspaceId', 'kindSlug'] },
+  'material.get_source_outline': { type: 'object', properties: { materialId: { type: 'string' }, workspaceId: { type: 'string' } }, required: ['materialId', 'workspaceId'] },
+  'material.get_source_pages': { type: 'object', properties: { materialId: { type: 'string' }, workspaceId: { type: 'string' }, pageRange: { type: 'string' } }, required: ['materialId', 'workspaceId', 'pageRange'] },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic dispatch over 8 tools with heterogeneous Zod schemas; ToolDefinition's ZodObject generic is invariant
@@ -294,9 +302,11 @@ function buildTool(name: string, ctx: any): { mcpHandler: (args: unknown) => Pro
     case 'directory.lookup': return buildDirectoryLookupTool(ctx) as AnyTool;
     case 'workspace.info': return buildWorkspaceInfoTool(ctx) as AnyTool;
     case 'note.crossrefs':              return buildNoteCrossrefsTool(ctx) as AnyTool;
-    case 'wiki.list_knowledge_types':   return buildListKnowledgeTypesTool(ctx) as AnyTool;
+    case 'wiki.list_knowledge_types':    return buildListKnowledgeTypesTool(ctx) as AnyTool;
     case 'wiki.get_knowledge_type_docs': return buildGetKnowledgeTypeDocsTool(ctx) as AnyTool;
-    default:                            return null;
+    case 'material.get_source_outline':  return buildGetSourceOutlineTool(ctx) as AnyTool;
+    case 'material.get_source_pages':    return buildGetSourcePagesTool(ctx) as AnyTool;
+    default:                             return null;
   }
 }
 

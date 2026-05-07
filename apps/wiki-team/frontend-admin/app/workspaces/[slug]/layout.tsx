@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils';
 
 const tabs = [
   { label: 'Overview', href: '' },
-  { label: 'Members', href: '/members' },
-  { label: 'Materials', href: '/materials' },
+  { label: 'Wiki', href: '/wiki' },
   { label: 'Notes', href: '/notes' },
+  { label: 'Materials', href: '/materials' },
+  { label: 'Members', href: '/members' },
   { label: 'Tokens', href: '/tokens' },
 ];
 

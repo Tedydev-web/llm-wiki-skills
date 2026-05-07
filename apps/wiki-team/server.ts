@@ -33,6 +33,9 @@ import { buildAuthMiddleware } from './api/middleware/auth.js';
 import { globalErrorHandler } from './api/middleware/error-handler.js';
 import { buildApiRouter } from './api/index.js';
 import { buildMcpTokenDbAdapter } from './api/routes/tokens.js';
+import { createVisionCaptionsWorker } from './jobs/vision-captions/worker.js';
+import { createEmbeddingRebuildWorker } from './jobs/embedding-rebuild/worker.js';
+import { registerAuditCleanupCron, createAuditCleanupWorker } from './jobs/audit-cleanup/index.js';
 
 // Sentry must be initialized before any other code that might throw
 await initSentry();
@@ -123,6 +126,39 @@ app.onError(globalErrorHandler);
 app.notFound((c) =>
   c.json({ error: 'not_found', message: `No route matched ${c.req.method} ${new URL(c.req.url).pathname}` }, 404),
 );
+
+// ---------------------------------------------------------------------------
+// Background workers — start after HTTP app is assembled
+//
+// Worker order: vision-captions (P03) → embedding-rebuild (P04) → audit-cleanup (P10)
+// Each worker registers its own SIGTERM/SIGINT shutdown handler.
+// BullMQ repeatable jobs are de-duplicated by jobId — safe to re-register on restart.
+
+const visionWorker = createVisionCaptionsWorker();
+const embeddingWorker = createEmbeddingRebuildWorker();
+const auditCleanupWorker = createAuditCleanupWorker();
+
+// Register audit-cleanup daily cron (idempotent — BullMQ de-duplication by jobId)
+await registerAuditCleanupCron();
+
+// Graceful shutdown: drain all workers before exiting
+const shutdownWorkers = async (signal: string) => {
+  logger.info({ signal }, '[server] shutdown signal — draining workers');
+  try {
+    await Promise.all([
+      visionWorker.close(),
+      embeddingWorker.close(),
+      auditCleanupWorker.close(),
+    ]);
+    logger.info('[server] all workers drained — exiting');
+  } catch (err) {
+    logger.error({ err }, '[server] error during worker shutdown');
+  }
+  process.exit(0);
+};
+
+process.once('SIGTERM', () => { void shutdownWorkers('SIGTERM'); });
+process.once('SIGINT',  () => { void shutdownWorkers('SIGINT'); });
 
 // ---------------------------------------------------------------------------
 // Bun.serve

@@ -1,10 +1,11 @@
 /**
- * notes.ts — /api/workspaces/:id/notes + /:slug
+ * notes.ts — /api/workspaces/:id/notes + /:slug + /:slug/backlinks
  *
- * GET    /api/workspaces/:id/notes           — list notes (RBAC-scoped)
- * GET    /api/workspaces/:id/notes/:slug     — read note; sets ETag: "<version>"
- * PATCH  /api/workspaces/:id/notes/:slug     — optimistic concurrency update (If-Match required)
- * DELETE /api/workspaces/:id/notes/:slug     — soft-delete
+ * GET    /api/workspaces/:id/notes                      — list notes (RBAC-scoped)
+ * GET    /api/workspaces/:id/notes/:slug                — read note; sets ETag: "<version>"
+ * GET    /api/workspaces/:id/notes/:slug/backlinks      — notes that link TO this note
+ * PATCH  /api/workspaces/:id/notes/:slug                — optimistic concurrency update (If-Match required)
+ * DELETE /api/workspaces/:id/notes/:slug                — soft-delete
  *
  * PATCH invariant (ADR 011):
  *   Atomic UPDATE ... WHERE version = :expected RETURNING version
@@ -186,6 +187,60 @@ export function buildNotesRouter(): Hono<AuthContextEnv> {
       return c.json({ slug, version: newVersion, etag: buildETag(newVersion) });
     },
   );
+
+  // GET /api/workspaces/:id/notes/:slug/backlinks
+  // Returns notes that link TO the target note via note_links table.
+  // Single SQL join: noteLinks → fromNote → noteKind color.
+  // Slug validated: /^[a-z0-9-]+$/ (reject path-traversal attempts).
+  app.get('/workspaces/:id/notes/:slug/backlinks', async (c) => {
+    requireAuth(c);
+    const wid = c.req.param('id');
+    const slug = c.req.param('slug');
+
+    // Validate slug format
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return errorResponse(c, 400, 'invalid_slug', 'Note slug must match /^[a-z0-9-]+$/');
+    }
+
+    const db = getDb();
+
+    // Resolve target note id
+    const [targetNote] = await db
+      .select({ id: schema.notes.id })
+      .from(schema.notes)
+      .where(
+        and(
+          eq(schema.notes.workspaceId, wid),
+          eq(schema.notes.slug, slug),
+          isNull(schema.notes.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!targetNote) {
+      return errorResponse(c, 404, 'not_found', 'Note not found');
+    }
+
+    // Get all notes that link TO this note (backlinks)
+    const backlinks = await db
+      .select({
+        slug: schema.notes.slug,
+        title: schema.notes.title,
+        kindSlug: schema.notes.taxonomy,
+        kindColor: schema.noteKinds.color,
+      })
+      .from(schema.noteLinks)
+      .innerJoin(schema.notes, eq(schema.noteLinks.fromNoteId, schema.notes.id))
+      .leftJoin(schema.noteKinds, eq(schema.notes.taxonomy, schema.noteKinds.slug))
+      .where(
+        and(
+          eq(schema.noteLinks.toNoteId, targetNote.id),
+          isNull(schema.notes.deletedAt),
+        ),
+      );
+
+    return c.json({ backlinks });
+  });
 
   // DELETE /api/workspaces/:id/notes/:slug — soft-delete
   app.delete(

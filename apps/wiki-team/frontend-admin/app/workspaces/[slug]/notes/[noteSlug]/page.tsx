@@ -110,11 +110,9 @@ export default function NoteDetailPage() {
           />
         </div>
 
-        {note.taxonomy.length > 0 && (
+        {note.taxonomy && (
           <div className="flex flex-wrap gap-1">
-            {note.taxonomy.map((tag) => (
-              <Badge key={tag} variant="secondary">{tag}</Badge>
-            ))}
+            <Badge variant="secondary">{note.taxonomy}</Badge>
           </div>
         )}
 

@@ -94,7 +94,10 @@ export interface Note {
   slug: string;
   title: string;
   body: string;
-  taxonomy: string[];
+  /** taxonomy stores the kind slug (e.g. "fact" | "analysis" | "procedure" | "reference") */
+  taxonomy: string;
+  /** JSONB array of linked note slugs (outlinks) */
+  links: string[];
   version: number;
   kbId: string;
   updatedAt: string;
@@ -104,10 +107,20 @@ export interface NoteSummary {
   id: string;
   slug: string;
   title: string;
-  taxonomy: string[];
+  /** taxonomy stores the kind slug (e.g. "fact" | "analysis") */
+  taxonomy: string;
   version: number;
   updatedAt: string;
   kbId: string;
+}
+
+/** Lightweight reference used in backlinks/outlinks panels */
+export interface NoteRef {
+  slug: string;
+  title: string;
+  kindSlug: string;
+  /** Hex color from noteKinds; null when kind not found */
+  kindColor: string | null;
 }
 
 export interface NoteKind {
@@ -368,6 +381,24 @@ export const api = {
       await apiFetch<void>(`/api/workspaces/${workspaceId}/notes/${noteSlug}`, {
         method: 'DELETE',
       });
+    },
+
+    /** GET /api/workspaces/:id/notes/:slug/backlinks — notes that link TO this note */
+    getBacklinks: async (workspaceId: string, noteSlug: string): Promise<NoteRef[]> => {
+      const { data } = await apiFetch<{ backlinks: NoteRef[] }>(
+        `/api/workspaces/${workspaceId}/notes/${noteSlug}/backlinks`,
+      );
+      return data.backlinks;
+    },
+
+    /**
+     * getCrossrefs — parse outlinks from note.links JSONB (already in Note response).
+     * Returns slugs from the links array; no extra HTTP call needed.
+     * Caller resolves titles by cross-referencing the notes list.
+     */
+    getCrossrefs: (links: unknown): string[] => {
+      if (!Array.isArray(links)) return [];
+      return links.filter((l): l is string => typeof l === 'string');
     },
   },
 
